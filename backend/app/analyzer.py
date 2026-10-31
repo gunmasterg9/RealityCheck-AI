@@ -37,6 +37,7 @@ def generate_printable_html_report(data: Dict[str, Any]) -> str:
     conf_explanation = final.get("confidence_explanation", "")
     summary = final.get("summary", "")
     what_changed = final.get("what_changed", "")
+    visual_verifs = final.get("visual_verifications", [])
     support_ev = final.get("support_evidence", [])
     counter_ev = final.get("counter_evidence", [])
     final_assumptions = final.get("assumptions", [])
@@ -253,6 +254,7 @@ def generate_printable_html_report(data: Dict[str, Any]) -> str:
     <div class="section-title">Supplied Context & Evidence</div>
     <div class="context-box">{context}</div>
   </div>
+  {"<div class='section'><div class='section-title'>Gemma 4 Visual Observations</div><div class='card'><ul>" + render_list(visual_verifs) + "</ul></div></div>" if visual_verifs else ""}
 
   <div class="section">
     <div class="section-title">Epistemic Adjudication & Verdict Shift</div>
@@ -330,3 +332,4 @@ def generate_printable_html_report(data: Dict[str, Any]) -> str:
 </body>
 </html>"""
     return html
+

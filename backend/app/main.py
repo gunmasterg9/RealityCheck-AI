@@ -19,10 +19,12 @@ from app.schemas import (
     AnalysisResponse,
     AnalysisSummaryItem,
     ProviderStatusResponse,
-    SampleClaim
+    SampleClaim,
+    BenchmarkReport
 )
 from app.analyzer import get_pipeline_service, generate_printable_html_report
 from app.services.analysis_pipeline import SAMPLE_CLAIMS
+from app.benchmark import get_benchmark_report
 
 # Configure logging
 logging.basicConfig(
@@ -77,6 +79,11 @@ async def get_providers():
 async def get_sample_claims():
     """Retrieve pre-configured sample claims highlighting varying evidentiary conditions."""
     return SAMPLE_CLAIMS
+
+@app.get("/api/benchmark", response_model=BenchmarkReport, summary="Gemma 4 Evaluation Benchmark Report")
+async def get_benchmark():
+    """Retrieve Gemma 4 empirical benchmark metrics across multimodal sample claims."""
+    return get_benchmark_report()
 
 @app.post("/api/analyze", response_model=AnalysisResponse, summary="Analyze a claim through the multi-stage pipeline")
 async def analyze_claim(request: AnalysisRequest):
@@ -145,3 +152,11 @@ async def export_analysis(
                 "Content-Disposition": f'attachment; filename="realitycheck-audit-{analysis_id}.json"'
             }
         )
+
+# Serve frontend build in production / standalone container if present
+import os
+from fastapi.staticfiles import StaticFiles
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+

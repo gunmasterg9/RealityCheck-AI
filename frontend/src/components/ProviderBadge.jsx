@@ -77,3 +77,4 @@ export default function ProviderBadge({ providers }) {
     </div>
   );
 }
+

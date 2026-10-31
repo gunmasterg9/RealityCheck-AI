@@ -111,3 +111,34 @@ async def test_full_analysis_and_export_lifecycle(mock_pipeline):
         # 7. Verify 404 after deletion
         not_found_res = await client.get(f"/api/history/{analysis_id}")
         assert not_found_res.status_code == 404
+
+@pytest.mark.asyncio
+async def test_multimodal_analysis(mock_pipeline):
+    """Verify that claims with multimodal image data process successfully."""
+    service, _, _ = mock_pipeline
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        payload = {
+            "claim": "Quantum processor achieved 100,000x speedup.",
+            "context": "Benchmarking data.",
+            "image_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+            "provider_preference": "auto"
+        }
+        res = await client.post("/api/analyze", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert data["has_image"] is True
+        assert data["initial_assessment"]["initial_verdict"] == "supported"
+
+@pytest.mark.asyncio
+async def test_benchmark_endpoint():
+    """Verify Gemma 4 benchmark evaluation endpoint."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.get("/api/benchmark")
+        assert res.status_code == 200
+        data = res.json()
+        assert "gemma4" in data["model_id"]
+        assert data["schema_compliance_pct"] == 100.0
+        assert len(data["results"]) >= 3
+

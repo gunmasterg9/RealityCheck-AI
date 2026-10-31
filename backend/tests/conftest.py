@@ -47,8 +47,14 @@ class MockProvider(BaseAIProvider):
             details="Mock provider operational" if self._is_healthy else "Mock provider offline"
         )
 
-    async def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
-        self.call_history.append({"prompt": prompt, "system_prompt": system_prompt})
+    async def generate_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        images: Optional[list] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        self.call_history.append({"prompt": prompt, "system_prompt": system_prompt, "images": images})
         if self.error_to_raise:
             raise self.error_to_raise
 
@@ -124,3 +130,4 @@ def mock_pipeline(temp_db):
     analyzer_mod._pipeline_service = service
     yield service, local_mock, cloud_mock
     analyzer_mod._pipeline_service = None
+

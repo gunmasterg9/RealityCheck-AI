@@ -1,4 +1,4 @@
-"""Data models and schemas for RealityCheck AI."""
+"""Data models and schemas for RealityCheck AI with Gemma 4 Multimodal Support."""
 from typing import List, Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timezone
@@ -12,13 +12,14 @@ class EvidenceItem(BaseModel):
     type: EvidenceClassification = Field(..., description="Classification category: support, counter, assumption, or unknown")
     statement: str = Field(..., description="The factual or logical item extracted or evaluated")
     claim_relevance: str = Field(..., description="Explanation of how this item impacts the claim")
-    source_basis: str = Field(default="supplied_context", description="Basis: supplied_context, model_prior, logic, or inference")
+    source_basis: str = Field(default="supplied_context", description="Basis: supplied_context, visual_evidence, model_prior, logic, or inference")
     confidence_impact: ImpactType = Field(default="neutral", description="How this shifts confidence")
 
 class InitialAssessment(BaseModel):
     initial_verdict: VerdictType = Field(..., description="Initial verdict before adversarial challenge")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Initial confidence score (0.0 to 1.0)")
     initial_reasoning: str = Field(..., description="Detailed rationale behind the initial assessment")
+    visual_observations: List[str] = Field(default_factory=list, description="Extracted visual observations (charts, fine print, asterisks, footnotes)")
     evidence_items: List[EvidenceItem] = Field(default_factory=list, description="Categorized evidence items")
     potential_weaknesses: List[str] = Field(default_factory=list, description="Initial identified weaknesses or assumptions")
 
@@ -35,6 +36,7 @@ class FinalJudgment(BaseModel):
     confidence_explanation: str = Field(..., description="Distinguishes analysis rigor from raw truth probability")
     summary: str = Field(..., description="Clear, objective verdict summary")
     what_changed: str = Field(..., description="Detailed explanation of what evolved from initial to final judgment")
+    visual_verifications: List[str] = Field(default_factory=list, description="Key empirical points corroborated or refuted by image evidence")
     support_evidence: List[str] = Field(default_factory=list, description="Verified or provided supporting points")
     counter_evidence: List[str] = Field(default_factory=list, description="Counter-evidence or opposing points")
     assumptions: List[str] = Field(default_factory=list, description="Remaining unverified assumptions")
@@ -50,6 +52,7 @@ class AnalysisAuditStep(BaseModel):
 class AnalysisRequest(BaseModel):
     claim: str = Field(..., min_length=3, max_length=2000, description="Claim statement to be investigated")
     context: Optional[str] = Field(default=None, max_length=12000, description="Optional background text, source excerpts, or evidence")
+    image_data: Optional[str] = Field(default=None, description="Optional Base64-encoded image or Data URI for Gemma 4 multimodal analysis")
     provider_preference: ProviderType = Field(default="auto", description="Preferred provider: auto, local, or cloud")
 
     @field_validator("claim")
@@ -72,6 +75,7 @@ class AnalysisResponse(BaseModel):
     id: str = Field(..., description="Unique analysis record identifier")
     claim: str = Field(..., description="Investigated claim")
     context: Optional[str] = Field(default=None, description="Supplied context")
+    has_image: bool = Field(default=False, description="Whether visual evidence was submitted and analyzed")
     provider_used: str = Field(..., description="Actual AI provider used")
     model_used: str = Field(..., description="Actual model identifier used")
     initial_assessment: InitialAssessment
@@ -83,6 +87,7 @@ class AnalysisResponse(BaseModel):
 class AnalysisSummaryItem(BaseModel):
     id: str
     claim: str
+    has_image: bool = False
     initial_verdict: VerdictType
     final_verdict: VerdictType
     assessment_confidence: float
@@ -97,6 +102,7 @@ class ProviderDetail(BaseModel):
     model_id: str
     status: Literal["ready", "unavailable", "unconfigured", "error"]
     is_available: bool
+    is_multimodal: bool = True
     details: Optional[str] = None
 
 class ProviderStatusResponse(BaseModel):
@@ -111,5 +117,28 @@ class SampleClaim(BaseModel):
     category: str
     claim: str
     context: Optional[str]
+    image_url: Optional[str] = None
+    has_image: bool = False
     expected_verdict_theme: str
     description: str
+
+class BenchmarkRunItem(BaseModel):
+    sample_id: str
+    claim_title: str
+    is_multimodal: bool
+    response_time_ms: int
+    schema_valid: bool
+    initial_verdict: str
+    final_verdict: str
+    verdict_shifted: bool
+    confidence: float
+
+class BenchmarkReport(BaseModel):
+    model_id: str
+    provider: str
+    total_runs: int
+    avg_response_time_ms: float
+    schema_compliance_pct: float
+    adversarial_shift_pct: float
+    timestamp: str
+    results: List[BenchmarkRunItem]

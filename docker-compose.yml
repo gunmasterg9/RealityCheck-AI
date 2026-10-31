@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  realitycheck:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: realitycheck-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - REALITYCHECK_ENV=production
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LOCAL_MODEL_ID=gemma4:e4b
+      - SQLITE_DB_PATH=/app/data/realitycheck.db
+    volumes:
+      - realitycheck-data:/app/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: realitycheck-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  realitycheck-data:
+  ollama-models:

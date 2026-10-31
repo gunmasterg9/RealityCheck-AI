@@ -5,21 +5,23 @@ import {
   HelpCircle,
   Lightbulb,
   FileCheck,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  ScanLine
 } from 'lucide-react';
 
 export default function EvidenceSection({ analysis }) {
   if (!analysis) return null;
 
-  const { final_judgment, initial_assessment } = analysis;
+  const { final_judgment, initial_assessment, has_image } = analysis;
   const [activeTab, setActiveTab] = useState('all');
 
   const supportItems = final_judgment.support_evidence || [];
   const counterItems = final_judgment.counter_evidence || [];
   const assumptionItems = final_judgment.assumptions || [];
   const unknownItems = final_judgment.unknowns || [];
-
-  const initialItems = initial_assessment.evidence_items || [];
+  const visualObservations = initial_assessment.visual_observations || [];
+  const visualVerifications = final_judgment.visual_verifications || [];
 
   const tabs = [
     { id: 'all', label: 'All Items', count: supportItems.length + counterItems.length + assumptionItems.length + unknownItems.length },
@@ -40,6 +42,27 @@ export default function EvidenceSection({ analysis }) {
           Strictly categorizing verified support, counter-points, unstated assumptions, and missing variables.
         </p>
       </div>
+
+      {/* Multimodal Extraction Card (if image observations exist) */}
+      {(has_image || visualObservations.length > 0 || visualVerifications.length > 0) && (
+        <div className="visual-evidence-banner">
+          <div className="banner-title-row">
+            <ScanLine size={16} className="scan-icon" />
+            <h4>Gemma 4 Multimodal Visual Evidence Observations</h4>
+          </div>
+          <p className="banner-sub">
+            Gemma 4 extracted these critical chart data points, footnote disclosures, and fine-print text directly from the attached image:
+          </p>
+          <ul className="visual-obs-list">
+            {(visualObservations.length > 0 ? visualObservations : visualVerifications).map((obs, idx) => (
+              <li key={idx} className="visual-obs-item">
+                <Eye size={13} className="eye-icon" />
+                <span>{obs}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="tabs-bar">
@@ -186,6 +209,55 @@ export default function EvidenceSection({ analysis }) {
         .section-desc {
           font-size: 0.82rem;
           color: var(--text-muted);
+        }
+        .visual-evidence-banner {
+          background: rgba(139, 92, 246, 0.08);
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          border-radius: 10px;
+          padding: 16px;
+          margin-bottom: 20px;
+        }
+        .banner-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 6px;
+        }
+        .banner-title-row h4 {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: #DDD6FE;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .scan-icon {
+          color: #A78BFA;
+        }
+        .banner-sub {
+          font-size: 0.8rem;
+          color: var(--text-secondary);
+          margin-bottom: 10px;
+        }
+        .visual-obs-list {
+          list-style: none;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .visual-obs-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          font-size: 0.82rem;
+          color: #F8FAFC;
+          background: rgba(0, 0, 0, 0.2);
+          padding: 6px 10px;
+          border-radius: 6px;
+        }
+        .eye-icon {
+          color: #38BDF8;
+          flex-shrink: 0;
+          margin-top: 2px;
         }
         .tabs-bar {
           display: flex;

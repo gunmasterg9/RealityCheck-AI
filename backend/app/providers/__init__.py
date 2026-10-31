@@ -4,3 +4,4 @@ from app.providers.ollama import OllamaProvider
 from app.providers.gemini import GeminiProvider
 
 __all__ = ["BaseAIProvider", "OllamaProvider", "GeminiProvider"]
+

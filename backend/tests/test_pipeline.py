@@ -102,3 +102,4 @@ async def test_auto_fails_when_both_unavailable(temp_db):
         await service.select_provider("auto")
 
     assert "No inference providers are currently available" in str(exc_info.value)
+

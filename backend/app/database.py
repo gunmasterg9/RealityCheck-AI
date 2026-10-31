@@ -128,28 +128,36 @@ def list_analyses(limit: int = 50, offset: int = 0, db_path: Optional[Path] = No
     with get_connection(db_path) as conn:
         cursor = conn.execute("""
             SELECT id, claim, initial_verdict, final_verdict, assessment_confidence,
-                   provider_used, model_used, summary, what_changed, created_at
+                   provider_used, model_used, summary, what_changed, full_data_json, created_at
             FROM analyses
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?;
         """, (limit, offset))
         
         rows = cursor.fetchall()
-        return [
-            AnalysisSummaryItem(
-                id=row["id"],
-                claim=row["claim"],
-                initial_verdict=row["initial_verdict"],
-                final_verdict=row["final_verdict"],
-                assessment_confidence=row["assessment_confidence"],
-                provider_used=row["provider_used"],
-                model_used=row["model_used"],
-                summary=row["summary"],
-                what_changed=row["what_changed"],
-                created_at=row["created_at"]
+        summaries = []
+        for row in rows:
+            has_img = False
+            try:
+                has_img = json.loads(row["full_data_json"]).get("has_image", False)
+            except Exception:
+                pass
+            summaries.append(
+                AnalysisSummaryItem(
+                    id=row["id"],
+                    claim=row["claim"],
+                    has_image=has_img,
+                    initial_verdict=row["initial_verdict"],
+                    final_verdict=row["final_verdict"],
+                    assessment_confidence=row["assessment_confidence"],
+                    provider_used=row["provider_used"],
+                    model_used=row["model_used"],
+                    summary=row["summary"],
+                    what_changed=row["what_changed"],
+                    created_at=row["created_at"]
+                )
             )
-            for row in rows
-        ]
+        return summaries
 
 def delete_analysis_by_id(analysis_id: str, db_path: Optional[Path] = None) -> bool:
     """Delete an analysis and cascaded steps."""

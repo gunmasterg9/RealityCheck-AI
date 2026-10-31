@@ -1,8 +1,8 @@
-"""Ollama local inference provider for Gemma 4."""
+"""Ollama local inference provider for Gemma 4 with Vision/Multimodal support."""
 import json
 import re
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import httpx
 
 from app.config import settings
@@ -37,6 +37,7 @@ class OllamaProvider(BaseAIProvider):
                         model_id=self._model_id,
                         status="unavailable",
                         is_available=False,
+                        is_multimodal=True,
                         details=f"Ollama returned HTTP {res.status_code}"
                     )
                 data = res.json()
@@ -51,7 +52,8 @@ class OllamaProvider(BaseAIProvider):
                         model_id=self._model_id,
                         status="ready",
                         is_available=True,
-                        details=f"Ollama active with model '{self._model_id}' verified."
+                        is_multimodal=True,
+                        details=f"Ollama active with model '{self._model_id}' (Open-weights, multimodal enabled)."
                     )
                 else:
                     return ProviderDetail(
@@ -59,6 +61,7 @@ class OllamaProvider(BaseAIProvider):
                         model_id=self._model_id,
                         status="unavailable",
                         is_available=False,
+                        is_multimodal=True,
                         details=f"Ollama running, but model '{self._model_id}' was not found in installed tags: {models}"
                     )
         except httpx.ConnectError:
@@ -67,6 +70,7 @@ class OllamaProvider(BaseAIProvider):
                 model_id=self._model_id,
                 status="unavailable",
                 is_available=False,
+                is_multimodal=True,
                 details=f"Could not connect to Ollama at {self._base_url}. Ensure Ollama is running."
             )
         except Exception as e:
@@ -75,8 +79,15 @@ class OllamaProvider(BaseAIProvider):
                 model_id=self._model_id,
                 status="error",
                 is_available=False,
+                is_multimodal=True,
                 details=f"Error checking Ollama status: {str(e)}"
             )
+
+    def _clean_base64_image(self, img_str: str) -> str:
+        """Strip data URI header if present (e.g. data:image/png;base64,...)."""
+        if "," in img_str:
+            return img_str.split(",", 1)[1].strip()
+        return img_str.strip()
 
     def _extract_json(self, raw_text: str) -> Dict[str, Any]:
         """Robustly parse JSON even if enclosed in markdown code blocks or containing preamble."""
@@ -105,13 +116,25 @@ class OllamaProvider(BaseAIProvider):
 
         raise ValueError(f"Failed to parse valid JSON from model output: {raw_text[:200]}...")
 
-    async def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
-        """Execute chat inference with Ollama requesting JSON output format."""
+    async def generate_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        images: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Execute chat inference with Ollama requesting JSON output format and optional multimodal images."""
         url = f"{self._base_url}/api/chat"
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        
+        user_message: Dict[str, Any] = {"role": "user", "content": prompt}
+        if images:
+            cleaned_images = [self._clean_base64_image(img) for img in images if img and img.strip()]
+            if cleaned_images:
+                user_message["images"] = cleaned_images
+
+        messages.append(user_message)
 
         payload = {
             "model": self._model_id,

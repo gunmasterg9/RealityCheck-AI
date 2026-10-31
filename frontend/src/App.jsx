@@ -8,43 +8,50 @@ import EvidenceSection from './components/EvidenceSection';
 import AdversarialSection from './components/AdversarialSection';
 import LimitationsSection from './components/LimitationsSection';
 import HistoryDrawer from './components/HistoryDrawer';
+import BenchmarkModal from './components/BenchmarkModal';
 import {
   fetchProviders,
   fetchSampleClaims,
+  fetchBenchmarkReport,
   analyzeClaim,
   fetchHistory,
   fetchAnalysisDetail,
   deleteAnalysis
 } from './api';
-import { ShieldAlert, AlertTriangle, Scale, CheckCircle2, HelpCircle } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Scale, Award, Eye, Sparkles } from 'lucide-react';
 
 export default function App() {
   const [claim, setClaim] = useState('');
   const [context, setContext] = useState('');
+  const [imageData, setImageData] = useState(null);
   const [providerPreference, setProviderPreference] = useState('auto');
   
   const [providers, setProviders] = useState(null);
   const [sampleClaims, setSampleClaims] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
+  const [benchmarkData, setBenchmarkData] = useState(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isBenchmarkOpen, setIsBenchmarkOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Load initial environment metadata
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [provData, samplesData, histData] = await Promise.allSettled([
+        const [provData, samplesData, histData, benchData] = await Promise.allSettled([
           fetchProviders(),
           fetchSampleClaims(),
-          fetchHistory()
+          fetchHistory(),
+          fetchBenchmarkReport()
         ]);
 
         if (provData.status === 'fulfilled') setProviders(provData.value);
         if (samplesData.status === 'fulfilled') setSampleClaims(samplesData.value);
         if (histData.status === 'fulfilled') setHistory(histData.value);
+        if (benchData.status === 'fulfilled') setBenchmarkData(benchData.value);
       } catch (err) {
         console.error('Failed to load initial data:', err);
       }
@@ -60,9 +67,8 @@ export default function App() {
     setCurrentAnalysis(null);
 
     try {
-      const result = await analyzeClaim(claim, context, providerPreference);
+      const result = await analyzeClaim(claim, context, providerPreference, imageData);
       setCurrentAnalysis(result);
-      // Refresh history in background
       fetchHistory().then(setHistory).catch(console.error);
     } catch (err) {
       setErrorMessage(err.message || 'Analysis pipeline execution failed.');
@@ -77,6 +83,7 @@ export default function App() {
       setCurrentAnalysis(detail);
       setClaim(detail.claim);
       setContext(detail.context || '');
+      setImageData(null);
       setIsHistoryOpen(false);
       window.scrollTo({ top: 400, behavior: 'smooth' });
     } catch (err) {
@@ -102,6 +109,7 @@ export default function App() {
         providers={providers}
         onOpenHistory={() => setIsHistoryOpen(true)}
         historyCount={history.length}
+        onOpenBenchmark={() => setIsBenchmarkOpen(true)}
       />
 
       <main className="container main-content">
@@ -118,12 +126,14 @@ export default function App() {
           </div>
         )}
 
-        {/* Claim Input Component */}
+        {/* Claim Input Component with Multimodal File Upload */}
         <ClaimInput
           claim={claim}
           setClaim={setClaim}
           context={context}
           setContext={setContext}
+          imageData={imageData}
+          setImageData={setImageData}
           providerPreference={providerPreference}
           setProviderPreference={setProviderPreference}
           sampleClaims={sampleClaims}
@@ -150,29 +160,29 @@ export default function App() {
           <div className="panel welcome-panel">
             <div className="welcome-header">
               <Scale size={24} className="welcome-scale-icon" />
-              <h3>The RealityCheck AI Epistemic Architecture</h3>
+              <h3>RealityCheck AI: Gemma 4 Epistemic Engine</h3>
             </div>
             <p className="welcome-intro">
-              Standard LLMs suffer from sycophancy and plausible hallucination—they often validate whatever premises a user feeds them. RealityCheck AI is engineered specifically to challenge assumptions through a rigorous three-pass adversarial pipeline.
+              Engineered for the <strong>DigitalOcean Best Open-Source AI Project</strong> and <strong>Google Best Use of Gemma 4</strong> prize categories. RealityCheck AI stops sycophancy by deploying Gemma 4 across a 3-pass adversarial loop, analyzing text claims, charts, footnotes, and nutritional disclosures.
             </p>
 
             <div className="methodology-grid">
               <div className="method-card">
-                <div className="method-step-num">Pass 1</div>
+                <div className="method-step-num">Pass 1 • Vision & Text</div>
                 <h4>Evidence Assessor</h4>
-                <p>Scrutinizes the claim exclusively against supplied facts. Claims lacking empirical backing are strictly assigned <em>insufficient_evidence</em>.</p>
+                <p>Transcribes chart axes, footnotes, and text claims. Strictly assigns <em>insufficient_evidence</em> if empirical backing is missing.</p>
               </div>
 
               <div className="method-card active-method">
-                <div className="method-step-num">Pass 2</div>
+                <div className="method-step-num">Pass 2 • Adversarial</div>
                 <h4>Adversarial Skeptic</h4>
-                <p>Actively challenges the initial pass. Hunts for selection bias, unverified assumptions, and alternative causal explanations.</p>
+                <p>Actively attacks the initial assessment. Hunts for synthetic benchmark traps, FDA disclaimers, and unverified assumptions.</p>
               </div>
 
               <div className="method-card">
-                <div className="method-step-num">Pass 3</div>
+                <div className="method-step-num">Pass 3 • Reconcile</div>
                 <h4>Chief RealityCheck Judge</h4>
-                <p>Adjudicates disagreements without inventing evidence. Outputs what changed, distinguishes confidence from truth probability, and discloses limitations.</p>
+                <p>Adjudicates disagreements without hallucinating outside evidence. Explains what changed and quantifies assessment soundness.</p>
               </div>
             </div>
           </div>
@@ -186,6 +196,13 @@ export default function App() {
         history={history}
         onSelectAnalysis={handleSelectHistoryItem}
         onDeleteAnalysis={handleDeleteHistoryItem}
+      />
+
+      {/* Gemma 4 Benchmark Evaluation Modal */}
+      <BenchmarkModal
+        isOpen={isBenchmarkOpen}
+        onClose={() => setIsBenchmarkOpen(false)}
+        benchmarkData={benchmarkData}
       />
 
       <style>{`

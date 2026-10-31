@@ -44,3 +44,4 @@ def test_gemini_json_extraction_markdown():
     raw = "```\n{\"verdict\": \"contradicted\"}\n```"
     parsed = provider._extract_json(raw)
     assert parsed["verdict"] == "contradicted"
+

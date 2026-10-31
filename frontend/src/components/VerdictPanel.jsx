@@ -298,3 +298,4 @@ export default function VerdictPanel({ analysis }) {
     </div>
   );
 }
+

@@ -79,3 +79,4 @@ def test_init_db_and_save_analysis(temp_db):
     assert deleted is True
     assert get_analysis_by_id("test-analysis-123", db_path=temp_db) is None
     assert len(list_analyses(limit=10, db_path=temp_db)) == 0
+

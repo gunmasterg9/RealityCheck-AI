@@ -1,8 +1,9 @@
-"""Google Gemini cloud inference provider using the official google-genai SDK."""
+"""Google Gemini cloud inference provider using the official google-genai SDK with multimodal support."""
 import json
 import re
+import base64
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from app.config import settings
 from app.providers.base import BaseAIProvider
@@ -31,20 +32,20 @@ class GeminiProvider(BaseAIProvider):
                 model_id=self._model_id,
                 status="unconfigured",
                 is_available=False,
+                is_multimodal=True,
                 details="GEMINI_API_KEY is not configured in backend/.env. Cloud provider is optional."
             )
 
         try:
             from google import genai
             client = genai.Client(api_key=self._api_key)
-            # Lightweight verification - list models or verify client
-            # We avoid full heavy generation in health check
             return ProviderDetail(
                 name="cloud",
                 model_id=self._model_id,
                 status="ready",
                 is_available=True,
-                details=f"Gemini client initialized with model '{self._model_id}'."
+                is_multimodal=True,
+                details=f"Gemini client initialized with model '{self._model_id}' (Hosted Gemma/Gemini)."
             )
         except ImportError:
             return ProviderDetail(
@@ -52,10 +53,10 @@ class GeminiProvider(BaseAIProvider):
                 model_id=self._model_id,
                 status="unavailable",
                 is_available=False,
+                is_multimodal=True,
                 details="google-genai SDK package is not installed."
             )
         except Exception as e:
-            # Mask any accidental key leakage in exception messages
             err_msg = str(e)
             if self._api_key in err_msg:
                 err_msg = err_msg.replace(self._api_key, "[REDACTED]")
@@ -64,6 +65,7 @@ class GeminiProvider(BaseAIProvider):
                 model_id=self._model_id,
                 status="error",
                 is_available=False,
+                is_multimodal=True,
                 details=f"Gemini initialization error: {err_msg}"
             )
 
@@ -91,8 +93,13 @@ class GeminiProvider(BaseAIProvider):
 
         raise ValueError(f"Failed to parse valid JSON from Gemini output: {raw_text[:200]}...")
 
-    async def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
-        """Call Gemini model requesting JSON output."""
+    async def generate_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        images: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Call Gemini model requesting JSON output and optional images."""
         if not self._api_key:
             raise RuntimeError(
                 "Gemini API key is not configured. Cloud provider requires GEMINI_API_KEY in backend/.env or environment."
@@ -104,28 +111,41 @@ class GeminiProvider(BaseAIProvider):
 
             client = genai.Client(api_key=self._api_key)
             
-            # Combine system prompt if provided
             contents = []
             if system_prompt:
                 contents.append(f"System Instructions:\n{system_prompt}\n\nTask:\n")
             contents.append(prompt)
 
-            full_prompt = "".join(contents)
+            # Process any multimodal image parts
+            if images:
+                for img_data in images:
+                    if not img_data or not img_data.strip():
+                        continue
+                    mime_type = "image/png"
+                    raw_b64 = img_data.strip()
+                    if "," in raw_b64:
+                        prefix, raw_b64 = raw_b64.split(",", 1)
+                        if "image/jpeg" in prefix:
+                            mime_type = "image/jpeg"
+                        elif "image/webp" in prefix:
+                            mime_type = "image/webp"
+                    
+                    img_bytes = base64.b64decode(raw_b64)
+                    part = types.Part.from_bytes(data=img_bytes, mime_type=mime_type)
+                    contents.append(part)
 
             config = types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.2,
             )
 
-            # Note: client.models.generate_content is synchronous in genai client, or client.aio.models
-            # Let's check if client.aio is available or run in thread
             import asyncio
             loop = asyncio.get_event_loop()
             
             def _call():
                 return client.models.generate_content(
                     model=self._model_id,
-                    contents=full_prompt,
+                    contents=contents,
                     config=config
                 )
 

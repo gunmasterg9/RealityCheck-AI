@@ -1,5 +1,5 @@
 /**
- * RealityCheck AI API Client
+ * RealityCheck AI API Client with Multimodal & Benchmark support
  */
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -21,13 +21,20 @@ export async function fetchSampleClaims() {
   return res.json();
 }
 
-export async function analyzeClaim(claim, context = null, providerPreference = 'auto') {
+export async function fetchBenchmarkReport() {
+  const res = await fetch(`${API_BASE}/api/benchmark`);
+  if (!res.ok) throw new Error(`Failed to fetch benchmark: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function analyzeClaim(claim, context = null, providerPreference = 'auto', imageData = null) {
   const res = await fetch(`${API_BASE}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       claim,
       context: context && context.trim() ? context.trim() : null,
+      image_data: imageData || null,
       provider_preference: providerPreference
     })
   });

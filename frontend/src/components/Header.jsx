@@ -1,8 +1,13 @@
 import React from 'react';
-import { ShieldAlert, History, Sparkles } from 'lucide-react';
+import { ShieldAlert, History, Award, BarChart2 } from 'lucide-react';
 import ProviderBadge from './ProviderBadge';
 
-export default function Header({ providers, onOpenHistory, historyCount }) {
+export default function Header({
+  providers,
+  onOpenHistory,
+  historyCount,
+  onOpenBenchmark
+}) {
   return (
     <header className="app-header">
       <div className="container header-inner">
@@ -14,6 +19,10 @@ export default function Header({ providers, onOpenHistory, historyCount }) {
             <div className="brand-title-row">
               <span className="brand-title">RealityCheck</span>
               <span className="brand-badge">AI</span>
+              <div className="hackathon-prize-pill" onClick={onOpenBenchmark} title="Click to view Gemma 4 Benchmark">
+                <Award size={12} className="award-icon" />
+                <span>DigitalOcean Open-Source & Google Gemma 4</span>
+              </div>
             </div>
             <p className="brand-tagline">Don't just trust an answer. Challenge it.</p>
           </div>
@@ -21,6 +30,15 @@ export default function Header({ providers, onOpenHistory, historyCount }) {
 
         <div className="header-actions">
           <ProviderBadge providers={providers} />
+
+          <button
+            className="btn-secondary benchmark-btn"
+            onClick={onOpenBenchmark}
+            title="View Gemma 4 Empirical Benchmark"
+          >
+            <BarChart2 size={15} />
+            <span>Benchmark</span>
+          </button>
           
           <button 
             className="btn-secondary history-btn" 
@@ -75,7 +93,8 @@ export default function Header({ providers, onOpenHistory, historyCount }) {
         .brand-title-row {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
+          flex-wrap: wrap;
         }
         .brand-title {
           font-size: 1.35rem;
@@ -95,6 +114,27 @@ export default function Header({ providers, onOpenHistory, historyCount }) {
           border-radius: 4px;
           letter-spacing: 0.05em;
         }
+        .hackathon-prize-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(245, 158, 11, 0.12);
+          border: 1px solid rgba(245, 158, 11, 0.35);
+          color: #FDE68A;
+          font-size: 0.7rem;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 9999px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .hackathon-prize-pill:hover {
+          background: rgba(245, 158, 11, 0.25);
+          border-color: rgba(245, 158, 11, 0.6);
+        }
+        .award-icon {
+          color: #F59E0B;
+        }
         .brand-tagline {
           font-size: 0.8rem;
           color: var(--text-muted);
@@ -103,7 +143,12 @@ export default function Header({ providers, onOpenHistory, historyCount }) {
         .header-actions {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .benchmark-btn {
+          font-size: 0.82rem;
+          padding: 6px 12px;
         }
         .history-btn {
           position: relative;
