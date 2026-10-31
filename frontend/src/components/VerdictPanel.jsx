@@ -11,7 +11,11 @@ import {
   Clock,
   Calendar,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  BarChart3,
+  Search,
+  FileQuestion,
+  ShieldAlert
 } from 'lucide-react';
 import { getExportUrl } from '../api';
 
@@ -88,6 +92,60 @@ export default function VerdictPanel({ analysis }) {
     ? analysis.final_judgment.counter_evidence
     : [];
 
+  // Accurate source metrics: distinguish retrieved sources from URL-validated sources
+  const safeSources = Array.isArray(analysis.sources) ? analysis.sources : [];
+  const retrievedSourcesCount =
+    typeof analysis.retrieved_sources_count === 'number'
+      ? analysis.retrieved_sources_count
+      : safeSources.length;
+
+  const urlValidatedSourcesCount =
+    typeof analysis.url_validated_sources_count === 'number'
+      ? analysis.url_validated_sources_count
+      : safeSources.filter((s) => s?.is_url_accessible !== false && s?.retrieval_status !== 'inaccessible').length;
+
+  // Separate confidence and soundness metrics
+  const metrics = analysis.metrics || {};
+  const evidenceCoverage = analysis.evidence_coverage ?? metrics.evidence_coverage;
+  const sourceQuality = analysis.source_quality ?? metrics.source_quality;
+  const claimConfidence = analysis.claim_verification_confidence ?? metrics.claim_verification_confidence;
+  const reasoningCompleteness = analysis.reasoning_completeness ?? metrics.reasoning_completeness;
+
+  const formatMetricPct = (val) => {
+    if (val === null || val === undefined || isNaN(val)) {
+      return { text: 'Unavailable', isAvailable: false };
+    }
+    return { text: `${Math.round(val * 100)}%`, isAvailable: true };
+  };
+
+  const covDisp = formatMetricPct(evidenceCoverage);
+  const qualDisp = formatMetricPct(sourceQuality);
+  const confDisp = formatMetricPct(claimConfidence);
+  const compDisp = formatMetricPct(reasoningCompleteness);
+
+  // Unverified breakdown
+  const normVerdict = verdict.toUpperCase();
+  const isUnverified =
+    normVerdict.includes('UNVERIF') ||
+    normVerdict.includes('INSUFFICIENT') ||
+    Boolean(analysis.unverified_breakdown);
+
+  const breakdownData = analysis.unverified_breakdown || {
+    evidence_found: [
+      `Located ${retrievedSourcesCount} retrieved source records addressing related keywords or context.`
+    ],
+    evidence_missing: [
+      'Primary gazette, official institutional press release, or authenticated public registry record.',
+      'Independent investigative reporting by accredited news agencies or peer-reviewed studies.'
+    ],
+    why_unestablished:
+      'Available evidence provides topical context or uncorroborated assertions. In accordance with epistemic rigor, lack of immediate proof does not prove the claim is false, but it cannot be verified without primary documentation.',
+    evidence_needed: [
+      'Official statement or filing from the relevant governmental or scientific authority.',
+      'Corroboration from at least two accredited independent news organizations.'
+    ]
+  };
+
   const getVerdictConfig = (v) => {
     const norm = String(v || '').toLowerCase();
     if (norm.includes('true') || (norm.includes('support') && !norm.includes('insufficient'))) {
@@ -147,7 +205,7 @@ export default function VerdictPanel({ analysis }) {
         icon: HelpCircle,
         color: '#818CF8',
         bgGlow: 'rgba(129, 140, 248, 0.15)',
-        description: 'Circulating without sufficient independent verification or public record corroboration.'
+        description: 'Circulating without sufficient independent verification or public record corroboration. Not confirmed as false.'
       };
     }
     return {
@@ -239,13 +297,13 @@ export default function VerdictPanel({ analysis }) {
           <div className="conf-expl-box">
             <Info size={13} className="info-icon" />
             <p className="conf-expl-text">
-              <strong>Epistemic Soundness:</strong> {explanation}
+              <strong>Methodological Soundness:</strong> {explanation}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Quick Evidence Metrics Bar */}
+      {/* Quick Evidence Counts Bar - Ambiguity Removed */}
       <div className="evidence-metrics-bar">
         <span className="metric-pill supporting">
           <CheckCircle2 size={13} />
@@ -255,11 +313,115 @@ export default function VerdictPanel({ analysis }) {
           <XCircle size={13} />
           <strong>{counterList.length}</strong> Counter Points
         </span>
-        <span className="metric-pill sources">
+        <span className="metric-pill sources" title="Total public web and fact-check sources retrieved">
           <Layers size={13} />
-          <strong>{analysis.sources?.length || 0}</strong> Verified Sources
+          <strong>{retrievedSourcesCount}</strong> Retrieved Sources
+        </span>
+        <span className="metric-pill validated" title="Sources whose HTTP endpoints were validated as accessible (distinguished from source authenticity)">
+          <ShieldCheck size={13} />
+          <strong>{urlValidatedSourcesCount}</strong> URL-Validated Sources
         </span>
       </div>
+
+      {/* Separate Epistemic & Soundness Metrics */}
+      <div className="transparency-metrics-grid">
+        <div className="transparency-metric-card">
+          <div className="metric-card-header">
+            <span className="metric-name">Evidence Coverage</span>
+            <span className={`metric-figure ${covDisp.isAvailable ? 'available' : 'unavailable'}`}>
+              {covDisp.text}
+            </span>
+          </div>
+          <p className="metric-desc">Proportion of claim assertions corroborated by retrieved evidence.</p>
+        </div>
+
+        <div className="transparency-metric-card">
+          <div className="metric-card-header">
+            <span className="metric-name">Source Quality</span>
+            <span className={`metric-figure ${qualDisp.isAvailable ? 'available' : 'unavailable'}`}>
+              {qualDisp.text}
+            </span>
+          </div>
+          <p className="metric-desc">Weighted credibility score across primary official, academic, and news tiers.</p>
+        </div>
+
+        <div className="transparency-metric-card">
+          <div className="metric-card-header">
+            <span className="metric-name">Factual Confidence</span>
+            <span className={`metric-figure ${confDisp.isAvailable ? 'available' : 'unavailable'}`}>
+              {confDisp.text}
+            </span>
+          </div>
+          <p className="metric-desc">Certainty in verdict (distinguished from procedural soundness).</p>
+        </div>
+
+        <div className="transparency-metric-card">
+          <div className="metric-card-header">
+            <span className="metric-name">Reasoning Completeness</span>
+            <span className={`metric-figure ${compDisp.isAvailable ? 'available' : 'unavailable'}`}>
+              {compDisp.text}
+            </span>
+          </div>
+          <p className="metric-desc">Scope of counter-arguments and hidden assumptions challenged.</p>
+        </div>
+      </div>
+
+      {/* Epistemic Breakdown for Unverified / Insufficient Evidence Claims */}
+      {isUnverified && (
+        <div className="unverified-breakdown-box">
+          <div className="breakdown-header">
+            <FileQuestion size={20} className="breakdown-header-icon" />
+            <div>
+              <h4 className="breakdown-title">Epistemic Investigation Breakdown: Why This Claim is Unverified</h4>
+              <p className="breakdown-subtitle">
+                Under rigorous verification principles, lack of proof does not equate to disproof. An unsupported claim is held as UNVERIFIED rather than presumed false.
+              </p>
+            </div>
+          </div>
+
+          <div className="breakdown-body-grid">
+            <div className="breakdown-section">
+              <span className="breakdown-section-title found">
+                <CheckCircle2 size={13} /> Evidence Found in Retrieved Corpus
+              </span>
+              <ul className="breakdown-items-list">
+                {breakdownData.evidence_found?.map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="breakdown-section">
+              <span className="breakdown-section-title missing">
+                <AlertCircle size={13} /> Critical Evidence Missing
+              </span>
+              <ul className="breakdown-items-list">
+                {breakdownData.evidence_missing?.map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="breakdown-section full-span">
+              <span className="breakdown-section-title rationale">
+                <Info size={13} /> Why Retrieved Sources Do Not Establish Claim
+              </span>
+              <p className="breakdown-text-block">{breakdownData.why_unestablished}</p>
+            </div>
+
+            <div className="breakdown-section full-span">
+              <span className="breakdown-section-title needed">
+                <ArrowUpRight size={13} /> Additional Independent Evidence Needed to Substantiate
+              </span>
+              <ul className="breakdown-items-list">
+                {breakdownData.evidence_needed?.map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Executive Summary */}
       <div className="verdict-summary-box">
@@ -430,7 +592,7 @@ export default function VerdictPanel({ analysis }) {
         .evidence-metrics-bar {
           display: flex;
           gap: 12px;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
           flex-wrap: wrap;
         }
         .metric-pill {
@@ -458,6 +620,137 @@ export default function VerdictPanel({ analysis }) {
           color: #38BDF8;
           border-color: rgba(56, 189, 248, 0.25);
           background: rgba(56, 189, 248, 0.08);
+        }
+        .metric-pill.validated {
+          color: #A78BFA;
+          border-color: rgba(167, 139, 250, 0.25);
+          background: rgba(167, 139, 250, 0.08);
+        }
+        .transparency-metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px;
+          margin-bottom: 22px;
+        }
+        .transparency-metric-card {
+          background: rgba(15, 23, 42, 0.5);
+          border: 1px solid rgba(148, 163, 184, 0.15);
+          border-radius: 8px;
+          padding: 12px 14px;
+        }
+        .metric-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 4px;
+        }
+        .metric-name {
+          font-size: 0.76rem;
+          font-weight: 600;
+          color: #CBD5E1;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .metric-figure {
+          font-size: 0.95rem;
+          font-weight: 700;
+          font-family: 'JetBrains Mono', monospace;
+        }
+        .metric-figure.available {
+          color: #38BDF8;
+        }
+        .metric-figure.unavailable {
+          color: #94A3B8;
+          font-size: 0.8rem;
+          font-style: italic;
+        }
+        .metric-desc {
+          font-size: 0.72rem;
+          color: #94A3B8;
+          margin: 0;
+          line-height: 1.35;
+        }
+        .unverified-breakdown-box {
+          background: rgba(30, 27, 75, 0.35);
+          border: 1px solid rgba(129, 140, 248, 0.3);
+          border-radius: 10px;
+          padding: 18px;
+          margin-bottom: 22px;
+        }
+        .breakdown-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .breakdown-header-icon {
+          color: #818CF8;
+          flex-shrink: 0;
+          margin-top: 3px;
+        }
+        .breakdown-title {
+          font-size: 0.92rem;
+          font-weight: 700;
+          color: #E0E7FF;
+          margin: 0 0 4px 0;
+        }
+        .breakdown-subtitle {
+          font-size: 0.78rem;
+          color: #C7D2FE;
+          margin: 0;
+          line-height: 1.45;
+        }
+        .breakdown-body-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 14px;
+        }
+        .breakdown-section {
+          background: rgba(15, 23, 42, 0.6);
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 6px;
+          padding: 12px;
+        }
+        .breakdown-section.full-span {
+          grid-column: 1 / -1;
+        }
+        .breakdown-section-title {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.74rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 8px;
+        }
+        .breakdown-section-title.found {
+          color: #10B981;
+        }
+        .breakdown-section-title.missing {
+          color: #F87171;
+        }
+        .breakdown-section-title.rationale {
+          color: #38BDF8;
+        }
+        .breakdown-section-title.needed {
+          color: #FBBF24;
+        }
+        .breakdown-items-list {
+          margin: 0;
+          padding-left: 18px;
+          font-size: 0.78rem;
+          color: #E2E8F0;
+          line-height: 1.45;
+        }
+        .breakdown-items-list li {
+          margin-bottom: 4px;
+        }
+        .breakdown-text-block {
+          margin: 0;
+          font-size: 0.8rem;
+          color: #E2E8F0;
+          line-height: 1.5;
         }
         .verdict-summary-box {
           background: rgba(0, 0, 0, 0.25);

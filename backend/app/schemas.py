@@ -172,6 +172,46 @@ SourceType = Literal[
     "user_context"
 ]
 
+SourceCategory = Literal[
+    "PRIMARY_OFFICIAL",
+    "INDEPENDENT_NEWS",
+    "FACT_CHECK",
+    "ACADEMIC",
+    "SOCIAL_MEDIA",
+    "SECONDARY_REFERENCE",
+    "CONTEXTUAL",
+    "UNRELIABLE",
+    "UNAVAILABLE"
+]
+
+RetrievalStatus = Literal[
+    "accessible",
+    "cached",
+    "inaccessible",
+    "blocked"
+]
+
+EvidenceRelationship = Literal[
+    "SUPPORTS",
+    "CONTRADICTS",
+    "PROVIDES_CONTEXT",
+    "DOES_NOT_ADDRESS_CLAIM"
+]
+
+class UnverifiedBreakdown(BaseModel):
+    evidence_found: List[str] = Field(default_factory=list, description="Factual evidence points located in retrieved corpus")
+    evidence_missing: List[str] = Field(default_factory=list, description="Critical missing documentation or proof points")
+    why_unestablished: str = Field(default="", description="Epistemic rationale for why available sources are insufficient")
+    evidence_needed: List[str] = Field(default_factory=list, description="Specific primary or independent sources required to verify")
+
+class VerificationMetrics(BaseModel):
+    evidence_coverage: Optional[float] = Field(default=None, description="Proportion of claim assertions corroborated by evidence (0.0-1.0)")
+    source_quality: Optional[float] = Field(default=None, description="Weighted credibility score of retrieved sources (0.0-1.0)")
+    claim_verification_confidence: Optional[float] = Field(default=None, description="Factual certainty in the verdict rendered (0.0-1.0)")
+    reasoning_completeness: Optional[float] = Field(default=None, description="Completeness of adversarial cross-examination and counter-checks (0.0-1.0)")
+    assessment_soundness: float = Field(default=0.8, description="Methodological soundness of the verification process")
+    metrics_notes: Dict[str, str] = Field(default_factory=dict, description="Explanatory notes for each metric or reason if unavailable")
+
 class VerificationRequest(BaseModel):
     input_text: str = Field(..., min_length=2, description="Claim, URL, article snippet, or forwarded message")
     input_type: InputCategory = Field(default="auto", description="Input type category")
@@ -209,8 +249,16 @@ class SourceItem(BaseModel):
     title: str
     publisher: str
     publish_date: Optional[str] = None
+    source_category: SourceCategory = "CONTEXTUAL"
     source_type: SourceType = "web_search"
+    retrieval_status: RetrievalStatus = "accessible"
+    http_status: Optional[int] = 200
+    is_url_accessible: bool = True
     reliability_score: float = 0.8
+    relevance_score: float = 0.8
+    evidence_relationship: EvidenceRelationship = "PROVIDES_CONTEXT"
+    relationship_explanation: Optional[str] = None
+    supporting_excerpt: Optional[str] = None
 
 class EvidenceRecord(BaseModel):
     id: str
@@ -218,8 +266,11 @@ class EvidenceRecord(BaseModel):
     source_url: str
     publisher: str
     excerpt: str
-    direction: EvidenceDirection
+    direction: EvidenceDirection = "contextual"
+    relationship: EvidenceRelationship = "PROVIDES_CONTEXT"
+    relationship_explanation: Optional[str] = None
     relevance_score: float = 0.85
+    source_category: Optional[SourceCategory] = None
 
 class ExtractedClaim(BaseModel):
     id: str
@@ -267,6 +318,14 @@ class VerificationJobResponse(BaseModel):
     stages: List[VerificationStageAudit] = Field(default_factory=list)
     audit_steps: Optional[List[Dict[str, Any]]] = None
     final_judgment: Optional[Dict[str, Any]] = None
+    unverified_breakdown: Optional[UnverifiedBreakdown] = None
+    metrics: Optional[VerificationMetrics] = None
+    evidence_coverage: Optional[float] = None
+    source_quality: Optional[float] = None
+    claim_verification_confidence: Optional[float] = None
+    reasoning_completeness: Optional[float] = None
+    retrieved_sources_count: int = 0
+    url_validated_sources_count: int = 0
     is_partial: bool = False
     error_notice: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -291,6 +350,19 @@ class VerificationJobResponse(BaseModel):
             self.source_urls = [s.url for s in self.sources if s.url]
         if self.verification_timestamp is None:
             self.verification_timestamp = self.created_at
+        self.retrieved_sources_count = len(self.sources)
+        self.url_validated_sources_count = sum(1 for s in self.sources if getattr(s, "is_url_accessible", True))
+
+        if self.metrics:
+            if self.evidence_coverage is None:
+                self.evidence_coverage = self.metrics.evidence_coverage
+            if self.source_quality is None:
+                self.source_quality = self.metrics.source_quality
+            if self.claim_verification_confidence is None:
+                self.claim_verification_confidence = self.metrics.claim_verification_confidence
+            if self.reasoning_completeness is None:
+                self.reasoning_completeness = self.metrics.reasoning_completeness
+
         if self.final_judgment is None:
             self.final_judgment = {
                 "verdict": self.final_verdict,

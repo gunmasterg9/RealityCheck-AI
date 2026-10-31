@@ -364,4 +364,155 @@ describe('RealityCheck AI Stage 6 Blank Screen Regression Suite', () => {
     expect(container.textContent).toContain('Stage 1: Evidence Extraction');
     unmount();
   });
+
+  // Scenario 16: Source classification & evidence relationship badges in EvidenceGrid
+  it('Scenario 16: Renders 9 source categories and evidence relationships properly', () => {
+    const complexSources = [
+      {
+        id: 's1',
+        title: 'WHO Official Guidelines on Aspartame Safety',
+        url: 'https://who.int/news/item/aspartame',
+        publisher: 'World Health Organization',
+        source_category: 'PRIMARY_OFFICIAL',
+        retrieval_status: 'accessible',
+        http_status: 200,
+        is_url_accessible: true,
+        relevance_score: 0.95,
+        evidence_relationship: 'SUPPORTS',
+        relationship_explanation: 'Primary international health agency guidelines affirm ADI limits.'
+      },
+      {
+        id: 's2',
+        title: 'Debunking Viral Sugar Cures',
+        url: 'https://boomlive.in/debunk',
+        publisher: 'Boom Live',
+        source_category: 'FACT_CHECK',
+        retrieval_status: 'accessible',
+        http_status: 200,
+        is_url_accessible: true,
+        relevance_score: 0.98,
+        evidence_relationship: 'CONTRADICTS',
+        relationship_explanation: 'Investigation debunked false claims.'
+      },
+      {
+        id: 's3',
+        title: 'Inaccessible Blog Post',
+        url: 'https://broken-link.com/post',
+        publisher: 'Broken Blog',
+        source_category: 'UNAVAILABLE',
+        retrieval_status: 'inaccessible',
+        http_status: 404,
+        is_url_accessible: false,
+        relevance_score: 0.0,
+        evidence_relationship: 'DOES_NOT_ADDRESS_CLAIM',
+        relationship_explanation: 'URL returned HTTP 404.'
+      }
+    ];
+
+    const complexEvidence = [
+      {
+        id: 'ev_1',
+        publisher: 'World Health Organization',
+        source_category: 'PRIMARY_OFFICIAL',
+        relationship: 'SUPPORTS',
+        direction: 'supporting',
+        excerpt: 'JECFA confirmed safe intake up to 40mg/kg daily.',
+        relationship_explanation: 'Explicit corroboration of safe daily dose bounds.',
+        source_url: 'https://who.int/news/item/aspartame',
+        relevance_score: 0.95
+      },
+      {
+        id: 'ev_2',
+        publisher: 'Boom Live',
+        source_category: 'FACT_CHECK',
+        relationship: 'CONTRADICTS',
+        direction: 'contradicting',
+        excerpt: 'There is no scientific basis for instant cures.',
+        relationship_explanation: 'Direct contradiction of claim by fact-checker.',
+        source_url: 'https://boomlive.in/debunk',
+        relevance_score: 0.98
+      }
+    ];
+
+    const { container, unmount } = renderComponent(
+      <EvidenceGrid sources={complexSources} evidence={complexEvidence} />
+    );
+
+    expect(container.innerHTML).not.toBe('');
+    expect(container.textContent).toContain('World Health Organization');
+    expect(container.textContent).toContain('Primary Official / Gov');
+    expect(container.textContent).toContain('SUPPORTS CLAIM');
+    expect(container.textContent).toContain('CONTRADICTS CLAIM');
+    expect(container.textContent).toContain('Relationship Rationale:');
+    unmount();
+  });
+
+  // Scenario 17: Transparent Separate Metrics in VerdictPanel
+  it('Scenario 17: Displays transparent separate metrics with safe fallback for unavailable values', () => {
+    const analysisWithMetrics = {
+      id: 'job-metrics-789',
+      primary_claim: 'Claim evaluated with separated epistemic measurements',
+      final_verdict: 'SUPPORTED',
+      assessment_confidence: 0.88,
+      soundness_explanation: 'Procedural verification followed full 6-stage adversarial audit.',
+      verdict_summary: 'Corroborated by independent sources.',
+      evidence_coverage: 0.85,
+      source_quality: 0.92,
+      claim_verification_confidence: 0.90,
+      reasoning_completeness: null, // explicitly uncalculated to test unavailable display
+      retrieved_sources_count: 5,
+      url_validated_sources_count: 4,
+      sources: [{ id: 's1', url: 'https://who.int', publisher: 'WHO', is_url_accessible: true }]
+    };
+
+    const { container, unmount } = renderComponent(
+      <VerdictPanel analysis={analysisWithMetrics} />
+    );
+
+    expect(container.innerHTML).not.toBe('');
+    expect(container.textContent).toContain('Evidence Coverage');
+    expect(container.textContent).toContain('85%');
+    expect(container.textContent).toContain('Source Quality');
+    expect(container.textContent).toContain('92%');
+    expect(container.textContent).toContain('Factual Confidence');
+    expect(container.textContent).toContain('90%');
+    expect(container.textContent).toContain('Reasoning Completeness');
+    expect(container.textContent).toContain('Unavailable');
+    expect(container.textContent).toContain('5 Retrieved Sources');
+    expect(container.textContent).toContain('4 URL-Validated Sources');
+    unmount();
+  });
+
+  // Scenario 18: Unverified Epistemic Breakdown
+  it('Scenario 18: Renders structured Unverified Epistemic Breakdown when verdict is UNVERIFIED', () => {
+    const unverifiedAnalysis = {
+      id: 'job-unverified-101',
+      primary_claim: 'Exotic root extract cures kidney stones within 48 hours.',
+      final_verdict: 'UNVERIFIED',
+      assessment_confidence: 0.55,
+      soundness_explanation: 'Evaluated public search corpus; no peer-reviewed proof located.',
+      verdict_summary: 'Unsupported claim; held as UNVERIFIED pending primary records.',
+      unverified_breakdown: {
+        evidence_found: ['Retrieved general herbal context from health blogs.'],
+        evidence_missing: ['Double-blind clinical trials or gazette notifications.'],
+        why_unestablished: 'Absence of proof does not equate to disproof, but primary documentation is absent.',
+        evidence_needed: ['Clinical study by accredited medical university.']
+      }
+    };
+
+    const { container, unmount } = renderComponent(
+      <VerdictPanel analysis={unverifiedAnalysis} />
+    );
+
+    expect(container.innerHTML).not.toBe('');
+    expect(container.textContent).toContain('UNVERIFIED');
+    expect(container.textContent).toContain('Epistemic Investigation Breakdown: Why This Claim is Unverified');
+    expect(container.textContent).toContain('Evidence Found in Retrieved Corpus');
+    expect(container.textContent).toContain('Critical Evidence Missing');
+    expect(container.textContent).toContain('Why Retrieved Sources Do Not Establish Claim');
+    expect(container.textContent).toContain('Additional Independent Evidence Needed to Substantiate');
+    expect(container.textContent).toContain('lack of proof does not equate to disproof');
+    unmount();
+  });
 });
+
