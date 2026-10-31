@@ -26,6 +26,67 @@ export async function fetchProviders() {
   return res.json();
 }
 
+/**
+ * Ollama Local Model Discovery, Status & Management
+ */
+export async function fetchOllamaModels() {
+  const res = await fetch(`${API_BASE}/api/ollama/models`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(errorData.detail || `Failed to fetch Ollama models: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchOllamaStatus() {
+  const res = await fetch(`${API_BASE}/api/ollama/status`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(errorData.detail || `Failed to fetch Ollama status: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function selectOllamaModel(modelName) {
+  const res = await fetch(`${API_BASE}/api/ollama/models/select`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelName })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(errorData.detail || `Failed to switch model: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function pullOllamaModel(modelName) {
+  const res = await fetch(`${API_BASE}/api/ollama/models/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelName })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(errorData.detail || `Failed to initiate model pull: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchPullStatus() {
+  const res = await fetch(`${API_BASE}/api/ollama/models/pull/status`);
+  if (!res.ok) throw new Error(`Failed to fetch pull status: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function cancelPull() {
+  const res = await fetch(`${API_BASE}/api/ollama/models/pull/cancel`, {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error(`Failed to cancel pull: HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function fetchSampleClaims() {
   const res = await fetch(`${API_BASE}/api/sample-claims`);
   if (!res.ok) throw new Error(`Failed to fetch sample claims: HTTP ${res.status}`);

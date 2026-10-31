@@ -1,12 +1,15 @@
 import React from 'react';
 import { ShieldAlert, History, Award, BarChart2 } from 'lucide-react';
 import ProviderBadge from './ProviderBadge';
+import ModelSelector from './ModelSelector';
 
 export default function Header({
   providers,
   onOpenHistory,
   historyCount,
-  onOpenBenchmark
+  onOpenBenchmark,
+  onModelChanged,
+  onProvidersRefresh
 }) {
   return (
     <header className="app-header">
@@ -29,6 +32,11 @@ export default function Header({
         </div>
 
         <div className="header-actions">
+          <ModelSelector
+            onModelChanged={onModelChanged}
+            onProvidersRefresh={onProvidersRefresh}
+          />
+
           <ProviderBadge providers={providers} />
 
           <button

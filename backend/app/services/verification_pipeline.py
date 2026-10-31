@@ -662,13 +662,37 @@ class VerificationPipelineService:
         # --------------------------------------------------------------------
         # STAGE 3: ADVERSARIAL CRITIQUE (Bounded LLM Reasoner)
         # --------------------------------------------------------------------
+        # Resolve active local model snapshot for consistency across verification lifecycle
+        snapped_local_model = self.provider_manager.resolve_current_local_model_name()
+
+        # Multimodal capability check
+        image_data_to_use = request.image_data
+        multimodal_limitation = None
+        if request.image_data:
+            from app.services.model_config import get_model_config_service
+            mcs = get_model_config_service()
+            is_snapped_vision = mcs._is_multimodal_model(snapped_local_model)
+
+            if not is_snapped_vision:
+                if request.provider_preference in ("local", "offline"):
+                    multimodal_limitation = (
+                        f"Selected local model '{snapped_local_model}' is text-only and does not support vision inputs. "
+                        "Visual evidence was excluded from local inference to prevent hallucinated claims. "
+                        "Switch to a vision-capable local model (such as Gemma 4) or use Cloud Gemini for visual analysis."
+                    )
+                    image_data_to_use = None
+                    logger.warning(multimodal_limitation)
+                else:
+                    logger.info(f"Local model '{snapped_local_model}' is text-only; Cloud Gemini will be prioritized for multimodal analysis.")
+
         s3_start = time.perf_counter()
         critique_result, provider_used, model_used = await self._stage3_adversarial_critique(
             claim=primary_claim,
             evidence=evidence_records,
             fact_checks=fact_check_matches,
-            image_data=request.image_data,
-            mode=request.provider_preference
+            image_data=image_data_to_use,
+            mode=request.provider_preference,
+            local_model_override=snapped_local_model
         )
         s3_ms = int((time.perf_counter() - s3_start) * 1000)
         stages.append(VerificationStageAudit(
@@ -755,6 +779,8 @@ class VerificationPipelineService:
             "Restricted paywalled archives and private messaging groups were not accessed.",
             "URL accessibility (HTTP 200) was validated independently from source authenticity and factual support."
         ]
+        if multimodal_limitation:
+            limitations.append(multimodal_limitation)
         if not sources:
             limitations.append("No independent public corroboration was returned by search providers for this query.")
 
@@ -1014,7 +1040,8 @@ class VerificationPipelineService:
         evidence: List[EvidenceRecord],
         fact_checks: List[ClaimReviewItem],
         image_data: Optional[str],
-        mode: str
+        mode: str,
+        local_model_override: Optional[str] = None
     ) -> Tuple[Dict[str, Any], str, str]:
         """Stage 3: Execute single bounded adversarial critique with per-stage timeout."""
         evidence_summary = "\n".join([
@@ -1052,7 +1079,8 @@ class VerificationPipelineService:
                 system_prompt=system_prompt,
                 images=images,
                 mode=mode,
-                timeout_seconds=settings.stage_timeout_seconds
+                timeout_seconds=settings.stage_timeout_seconds,
+                local_model_override=local_model_override
             )
             data = exec_res.data
             return data, exec_res.provider_used, exec_res.model_used

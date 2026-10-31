@@ -105,6 +105,61 @@ class ProviderDetail(BaseModel):
     is_multimodal: bool = True
     details: Optional[str] = None
 
+class OllamaModelInfo(BaseModel):
+    name: str
+    size: int
+    size_formatted: str
+    family: Optional[str] = None
+    parameter_size: Optional[str] = None
+    quantization_level: Optional[str] = None
+    context_length: Optional[int] = None
+    is_installed: bool = True
+    is_selected: bool = False
+    is_multimodal: bool = False
+    resource_tier: Literal["lightweight", "moderate", "heavy", "extreme"] = "moderate"
+    resource_warning: Optional[str] = None
+    modified_at: Optional[str] = None
+
+class OllamaModelsResponse(BaseModel):
+    models: List[OllamaModelInfo]
+    selected_model: str
+    total_count: int
+
+class OllamaStatusResponse(BaseModel):
+    is_connected: bool
+    version: Optional[str] = None
+    base_url: str
+    selected_model: str
+    is_selected_multimodal: bool
+    model_available: bool
+    installed_count: int
+    resource_tier: str
+    resource_warning: Optional[str] = None
+    details: Optional[str] = None
+
+class ModelSelectRequest(BaseModel):
+    model: str = Field(..., min_length=1, max_length=100)
+
+class ModelSelectResponse(BaseModel):
+    status: str
+    selected_model: str
+    is_multimodal: bool
+    resource_tier: str
+    resource_warning: Optional[str] = None
+    message: str
+
+class ModelPullRequest(BaseModel):
+    model: str = Field(..., min_length=1, max_length=100)
+
+class ModelPullStatusResponse(BaseModel):
+    status: Literal["idle", "pulling", "downloading", "verifying", "completed", "error", "cancelled"]
+    model: Optional[str] = None
+    completed_bytes: int = 0
+    total_bytes: int = 0
+    percentage: float = 0.0
+    message: Optional[str] = None
+    error: Optional[str] = None
+
 class ProviderStatusResponse(BaseModel):
     local: ProviderDetail
     cloud: ProviderDetail

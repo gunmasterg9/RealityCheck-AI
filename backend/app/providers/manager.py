@@ -13,6 +13,7 @@ from app.providers.base import BaseAIProvider
 from app.providers.ollama import OllamaProvider
 from app.providers.gemini import GeminiProvider
 from app.schemas import ProviderStatusResponse, ProviderDetail
+from app.database import get_system_setting
 
 logger = logging.getLogger(__name__)
 
@@ -33,20 +34,48 @@ class ProviderManager:
         local_lightweight: Optional[BaseAIProvider] = None,
         local_heavy: Optional[BaseAIProvider] = None,
     ):
+        self._custom_local = local_lightweight is not None
+        self._active_local_model: Optional[str] = None
+
         self.cloud_provider = cloud_provider or GeminiProvider(
             model_id=settings.cloud_model_id
         )
         self.local_lightweight = local_lightweight or OllamaProvider(
-            model_id=settings.local_model_id  # default qwen3:1.7b
+            model_id=self.resolve_current_local_model_name()
         )
         self.local_heavy = local_heavy or OllamaProvider(
             model_id=settings.heavy_local_model_id  # gemma4:e4b
         )
 
+    def resolve_current_local_model_name(self) -> str:
+        """Resolve active local model from memory, SQLite setting, or config default."""
+        if self._active_local_model:
+            return self._active_local_model
+        stored = get_system_setting("selected_local_model")
+        if stored and stored.strip():
+            return stored.strip()
+        return settings.local_model_id
+
+    def get_active_local_provider(self, model_override: Optional[str] = None) -> BaseAIProvider:
+        """Return the active local provider instance for inference."""
+        if self._custom_local:
+            return self.local_lightweight
+        if model_override:
+            return OllamaProvider(model_id=model_override)
+        active_name = self.resolve_current_local_model_name()
+        return OllamaProvider(model_id=active_name)
+
+    def set_active_local_model(self, model_name: str) -> None:
+        """Dynamically update active local model without server restart."""
+        self._active_local_model = model_name
+        self.local_lightweight = OllamaProvider(model_id=model_name)
+        logger.info(f"ProviderManager updated active local model to '{model_name}'")
+
     async def get_providers_status(self) -> ProviderStatusResponse:
         """Inspect health of both local and cloud inference options."""
         cloud_health = await self.cloud_provider.check_health()
-        local_health = await self.local_lightweight.check_health()
+        local_provider = self.get_active_local_provider()
+        local_health = await local_provider.check_health()
 
         active_default = "cloud" if cloud_health.is_available else ("local" if local_health.is_available else "none")
 
@@ -65,12 +94,12 @@ class ProviderManager:
         """
         Select provider strictly adhering to mode preference rules:
         - 'cloud': Cloud only. Never falls back to local.
-        - 'local': Local only (Qwen 3 1.7B default, Gemma 4 if prefer_heavy). Never calls cloud.
+        - 'local': Local only (dynamically uses currently selected Ollama model). Never calls cloud.
         - 'offline': Strict offline local only.
-        - 'auto': Cloud preferred; falls back to local if cloud unavailable or fails.
+        - 'auto': Cloud preferred; falls back to active local model if cloud unavailable or fails.
         """
         mode = preference.lower().strip()
-        local_target = self.local_heavy if prefer_heavy else self.local_lightweight
+        local_target = self.get_active_local_provider()
 
         if mode == "cloud":
             health = await self.cloud_provider.check_health()
@@ -95,10 +124,10 @@ class ProviderManager:
             if cloud_health.is_available:
                 return self.cloud_provider, "cloud"
 
-            # Priority 2: Local lightweight (Qwen 3 1.7B)
-            local_health = await self.local_lightweight.check_health()
+            # Priority 2: Local active model
+            local_health = await local_target.check_health()
             if local_health.is_available:
-                return self.local_lightweight, f"local ({self.local_lightweight.model_id})"
+                return local_target, f"local ({local_target.model_id})"
 
             raise RuntimeError(
                 f"No inference providers available. "
@@ -115,7 +144,8 @@ class ProviderManager:
         images: Optional[List[str]] = None,
         mode: str = "auto",
         prefer_heavy: bool = False,
-        timeout_seconds: Optional[int] = None
+        timeout_seconds: Optional[int] = None,
+        local_model_override: Optional[str] = None
     ) -> ProviderExecutionResult:
         """
         Execute JSON generation with bounded retries, per-call timeout, and safe auto-fallback.
@@ -125,7 +155,7 @@ class ProviderManager:
         mode_clean = mode.lower().strip()
         start = time.perf_counter()
 
-        local_target = self.local_heavy if prefer_heavy else self.local_lightweight
+        local_target = self.get_active_local_provider(model_override=local_model_override)
 
         # Explicit Cloud Mode
         if mode_clean == "cloud":
@@ -181,11 +211,11 @@ class ProviderManager:
             except Exception as e:
                 cloud_error = str(e)
                 logger.warning(
-                    f"Auto mode: Cloud inference failed ({cloud_error[:80]}). Falling back to local {self.local_lightweight.model_id}."
+                    f"Auto mode: Cloud inference failed ({cloud_error[:80]}). Falling back to local {local_target.model_id}."
                 )
 
-        # Fallback to local lightweight model
-        local_health = await self.local_lightweight.check_health()
+        # Fallback to local active model
+        local_health = await local_target.check_health()
         if not local_health.is_available:
             err_msg = f"Cloud inference failed ({cloud_error}) and local Ollama is unavailable ({local_health.details})."
             logger.error(err_msg)
@@ -193,7 +223,7 @@ class ProviderManager:
 
         try:
             data = await asyncio.wait_for(
-                self.local_lightweight.generate_json(
+                local_target.generate_json(
                     prompt=prompt, system_prompt=system_prompt, images=images
                 ),
                 timeout=timeout
@@ -202,8 +232,8 @@ class ProviderManager:
             fallback_note = f"cloud error: {cloud_error[:50]}" if cloud_error else "cloud unconfigured"
             return ProviderExecutionResult(
                 data=data,
-                provider_used=f"local ({self.local_lightweight.model_id} fallback)",
-                model_used=self.local_lightweight.model_id,
+                provider_used=f"local ({local_target.model_id} fallback)",
+                model_used=local_target.model_id,
                 fallback_occurred=True,
                 fallback_reason=fallback_note,
                 latency_ms=elapsed

@@ -29,10 +29,18 @@ from app.schemas import (
     VerifyMessageRequest,
     VerifyImageRequest,
     VerificationJobResponse,
-    ClaimReviewItem
+    ClaimReviewItem,
+    OllamaModelInfo,
+    OllamaModelsResponse,
+    OllamaStatusResponse,
+    ModelSelectRequest,
+    ModelSelectResponse,
+    ModelPullRequest,
+    ModelPullStatusResponse
 )
 from app.analyzer import get_pipeline_service, generate_printable_html_report
 from app.providers.manager import get_provider_manager
+from app.services.model_config import get_model_config_service
 from app.services.analysis_pipeline import SAMPLE_CLAIMS
 from app.services.verification_pipeline import get_verification_service
 from app.services.search_service import search_service
@@ -86,6 +94,68 @@ async def get_providers():
     """Inspect local and cloud AI provider availability and active configuration."""
     manager = get_provider_manager()
     return await manager.get_providers_status()
+
+# =====================================================================
+# Dynamic Ollama Model Discovery, Switching & Management Endpoints
+# =====================================================================
+
+@app.get("/api/ollama/models", response_model=OllamaModelsResponse, summary="Discover installed local Ollama models")
+async def get_ollama_models():
+    """Dynamically discover locally installed Ollama models with hardware resource tiers and vision capabilities."""
+    service = get_model_config_service()
+    return await service.discover_models()
+
+@app.get("/api/ollama/status", response_model=OllamaStatusResponse, summary="Check Ollama connection and active model status")
+async def get_ollama_status():
+    """Retrieve Ollama connectivity, version, active model, and hardware resource warnings."""
+    service = get_model_config_service()
+    return await service.get_status()
+
+@app.post("/api/ollama/models/select", response_model=ModelSelectResponse, summary="Select active local Ollama model")
+async def select_ollama_model(req: ModelSelectRequest):
+    """
+    Switch active local Ollama model without restarting FastAPI.
+    Validates model against installed tags and persists selection to SQLite.
+    """
+    service = get_model_config_service()
+    try:
+        return await service.select_model(req.model)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to select model: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to switch model: {str(e)}")
+
+@app.post("/api/ollama/models/pull", summary="Pull a model from Ollama library")
+async def pull_ollama_model(req: ModelPullRequest):
+    """
+    Initiate background download of a new model into Ollama.
+    Validates model name and provides live progress tracking.
+    """
+    service = get_model_config_service()
+    try:
+        await service.start_pull(req.model)
+        return {"status": "started", "model": req.model, "message": f"Started pulling '{req.model}'"}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error starting model pull: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@app.get("/api/ollama/models/pull/status", response_model=ModelPullStatusResponse, summary="Get model pull progress")
+async def get_ollama_pull_status():
+    """Check live download percentage and status for model pull."""
+    service = get_model_config_service()
+    return service.get_pull_status()
+
+@app.post("/api/ollama/models/pull/cancel", summary="Cancel model download")
+async def cancel_ollama_pull():
+    """Cancel any in-progress model download."""
+    service = get_model_config_service()
+    cancelled = await service.cancel_pull()
+    return {"status": "cancelled" if cancelled else "none_running"}
 
 @app.get("/api/sample-claims", response_model=List[SampleClaim], summary="List sample claims for demonstration")
 async def get_sample_claims():

@@ -8,6 +8,7 @@ import httpx
 from app.config import settings
 from app.providers.base import BaseAIProvider
 from app.schemas import ProviderDetail
+from app.database import get_system_setting
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,11 @@ class OllamaProvider(BaseAIProvider):
         num_threads: Optional[int] = None
     ):
         self._base_url = (base_url or settings.ollama_base_url).rstrip("/")
-        self._model_id = model_id or settings.local_model_id
+        if model_id:
+            self._model_id = model_id
+        else:
+            persisted = get_system_setting("selected_local_model")
+            self._model_id = persisted if (persisted and persisted.strip()) else settings.local_model_id
         self._timeout_seconds = timeout_seconds or settings.inference_timeout_seconds
         self._num_ctx = num_ctx or settings.ollama_num_ctx
         self._num_predict = num_predict or settings.ollama_num_predict

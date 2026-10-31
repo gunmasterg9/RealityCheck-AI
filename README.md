@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Model: Google Gemma 4](https://img.shields.io/badge/Model-Google%20Gemma%204%20(Open--Weights)-blue.svg)](https://ai.google.dev/gemma)
 [![Deployment: DigitalOcean Ready](https://img.shields.io/badge/Deploy-DigitalOcean%20Ready-0080FF.svg)](https://www.digitalocean.com/)
-[![Tests: 50 Passed](https://img.shields.io/badge/Tests-50%20Passed%20(32%20Pytest%20%2B%2018%20Vitest)-success.svg)](backend/tests/)
+[![Tests: 66 Passed](https://img.shields.io/badge/Tests-66%20Passed%20(43%20Pytest%20%2B%2023%20Vitest)-success.svg)](backend/tests/)
 
 RealityCheck AI is an open-source, AI-powered fact-checking platform that helps users investigate misinformation, misleading claims, suspicious messages, news articles, and potentially fraudulent content.
 
@@ -12,14 +12,15 @@ Unlike conventional AI chatbots that simply generate answers, RealityCheck AI us
 ## Key Features
 
 - **Six-Stage Verification:** Evidence extraction, evidence evaluation, adversarial critique, objective adjudication, citation validation, and final verdict.
+- **Dynamic Local Ollama Model Selector:** Discover, inspect, switch, and download locally installed Ollama models on-the-fly without editing `.env` or restarting FastAPI.
 - **Multi-Provider AI:** Google Gemini, Google Gemma 4, and Ollama with automatic provider fallback.
-- **Local AI Inference:** Supports lightweight Qwen models (`qwen3:1.7b`) through Ollama for resource-constrained computers (e.g. CPU-only Intel Core i3 / 8 GB RAM).
-- **Multimodal Analysis:** Gemma 4-powered visual evidence, chart, and screenshot analysis.
+- **Low-Resource Local Inference:** Supports lightweight Qwen models (`qwen3:1.7b`) through Ollama optimized for resource-constrained computers (e.g. CPU-only Intel Core i3 / 8 GB RAM).
+- **Multimodal Analysis:** Gemma 4-powered visual evidence, chart, and screenshot analysis with capability detection.
 - **Live Web Research:** Tavily search integration for retrieving relevant external sources.
 - **Fact-Check Integration:** Google Fact Check Tools API (`ClaimReview` registry).
 - **Evidence Transparency:** Supporting evidence, contradictory evidence, source references, and verification limitations.
 - **Self-Audit:** Challenges initial AI conclusions and records changes in the final assessment.
-- **Persistent History:** SQLite-powered verification history with WAL mode.
+- **Persistent History:** SQLite-powered verification history and settings persistence with WAL mode.
 - **9-Tier Source Classification:** Categorizes sources into `PRIMARY_OFFICIAL`, `FACT_CHECK`, `ACADEMIC`, `INDEPENDENT_NEWS`, `SECONDARY_REFERENCE`, `CONTEXTUAL`, `SOCIAL_MEDIA`, `UNRELIABLE`, and `UNAVAILABLE`.
 - **Epistemic Integrity:** Separates URL reachability from factual truth. Distinguishes unproven claims from disproven claims.
 
@@ -28,6 +29,39 @@ Unlike conventional AI chatbots that simply generate answers, RealityCheck AI us
 `SUPPORTED`, `FALSE`, `MISLEADING`, `PARTLY_TRUE`, `OUTDATED`, `UNVERIFIED`, and `INSUFFICIENT_EVIDENCE`.
 
 The platform distinguishes between disproven claims and claims that simply lack sufficient independent evidence.
+
+---
+
+## 🎛 Dynamic Local Ollama Model Selector (RealityCheck AI 2.1)
+
+RealityCheck AI 2.1 introduces a centralized runtime model configuration service that allows users to discover, switch, and manage local Ollama models directly from the UI without restarting the backend or modifying `.env` files.
+
+### 1. Automatic Ollama Model Discovery
+- Dynamic query to `GET http://127.0.0.1:11434/api/tags`.
+- Extracts model name, parameter size (e.g. `1.7B`, `7.5B`), architecture family (`qwen3`, `gemma4`, `llama`), quantization level (`Q4_K_M`), disk size, and vision capabilities.
+- Live connectivity and Ollama daemon version reporting (`GET /api/ollama/status`).
+
+### 2. Runtime Model Switching & SQLite Persistence
+- **Zero-Downtime Switching:** `POST /api/ollama/models/select` validates requested models against installed tags and switches active provider immediately.
+- **Persistence Across Restarts:** The selected model is saved in SQLite `system_settings` table (`key='selected_local_model'`) and automatically restored upon next boot.
+- **Concurrent Request Safety:** In-flight verification requests snapshot their model at Stage 1 start, ensuring active jobs are never mutated mid-run.
+
+### 3. Model Pull & Download Manager
+- Pull new models directly from the Ollama library (`POST /api/ollama/models/pull`).
+- Live progress tracking (`GET /api/ollama/models/pull/status`) showing percentage, bytes transferred, and layer verification.
+- User-controlled cancellation (`POST /api/ollama/models/pull/cancel`) with graceful socket abort.
+
+### 4. Laptop Resource Optimization (Intel Core i3 / 8 GB RAM)
+Because development machines often run CPU-only without dedicated GPUs, RealityCheck AI provides hardware tier classifications and advisory warnings:
+- **Lightweight (1B–2B, e.g. `qwen3:1.7b`, `smollm2:latest`):** Fastest response time (~5–10s on CPU); recommended for low RAM footprints.
+- **Moderate (3B–4B, e.g. `llama3.2:latest`):** Balanced performance and reasoning on CPU.
+- **Heavy (7B–8B, e.g. `gemma4:e4b`, `qwen3:8b`):** High analytical depth and multimodal capabilities. Runs with bounded context limits (`OLLAMA_NUM_CTX=2048`, `OLLAMA_NUM_PREDICT=1024`).
+- **Extreme (>8B):** Memory pressure warning; flagged to prevent system paging and memory exhaustion.
+
+### 5. Multimodal Capability Awareness
+- Detects whether the active local model supports visual inputs (`clip`, `vision`, `gemma4`).
+- If a user uploads an image with a text-only local model (e.g. `qwen3:1.7b`), the system routes vision extraction to Cloud Gemini (if configured) or provides a clear compatibility advisory.
+- Never falsely claims a text-only model analyzed image evidence.
 
 ---
 
@@ -234,15 +268,15 @@ The platform includes an evaluation suite benchmarking Gemma 4 on an **NVIDIA RT
 
 ## 🧪 Automated Testing
 
-A 50-test automated verification suite covers both backend and frontend:
-- **Backend (32 tests):** Service health, provider routing & fallback, SSRF IP blocking, Hindi/Gujarati script detection, HTML extraction, Google Fact Check Tools API, multimodal inputs, 9-tier source classification, epistemic unverified breakdown, citation integrity, and SQLite persistence.
-- **Frontend (18 tests):** Vitest regression suite covering all Stage 6 completion scenarios, error boundaries, null/undefined safety, network drop resilience, and custom metric rendering.
+A 66-test automated verification suite covers both backend and frontend:
+- **Backend (43 tests):** Service health, provider routing & fallback, dynamic Ollama model discovery, model switching without server restarts, unknown model rejection, SQLite settings persistence, multimodal capability detection, pull cancellation, SSRF IP blocking, Hindi/Gujarati script detection, HTML extraction, Google Fact Check Tools API, 9-tier source classification, epistemic unverified breakdown, citation integrity, and SQLite persistence.
+- **Frontend (23 tests):** Vitest suite covering all Stage 6 completion scenarios, error boundaries, null/undefined safety, network drop resilience, custom metric rendering, dynamic model dropdown switching, hardware advisory warnings, and pull progress modals.
 
 ```powershell
-# Run backend pytest suite (32 tests)
+# Run backend pytest suite (43 tests)
 python -m pytest backend/tests -v
 
-# Run frontend Vitest regression suite (18 tests)
+# Run frontend Vitest regression suite (23 tests)
 cd frontend
 npm.cmd test
 ```
@@ -255,8 +289,14 @@ All AI calls in automated tests use isolated mocks and complete in seconds witho
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | Service health status and version info (v2.0.0) |
+| `GET` | `/api/health` | Service health status and version info (v2.1.0) |
 | `GET` | `/api/providers` | Active status of local Ollama & hosted Gemini providers |
+| `GET` | `/api/ollama/models` | Dynamically discover installed Ollama models with hardware tiers and vision capabilities |
+| `GET` | `/api/ollama/status` | Ollama connectivity, daemon version, active model, and hardware advisory |
+| `POST` | `/api/ollama/models/select` | Switch active local model without server restart (persists to SQLite) |
+| `POST` | `/api/ollama/models/pull` | Download model from Ollama library with background progress tracking |
+| `GET` | `/api/ollama/models/pull/status` | Live download percentage, bytes transferred, and layer verification status |
+| `POST` | `/api/ollama/models/pull/cancel` | Cancel in-progress model download |
 | `GET` | `/api/benchmark` | Gemma 4 empirical benchmark metrics and run logs |
 | `GET` | `/api/sample-claims` | List curated multimodal and multilingual demonstration claims |
 | `POST` | `/api/verify` | Universal 6-stage real-time fact-checking endpoint |

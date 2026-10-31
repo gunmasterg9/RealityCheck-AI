@@ -2,6 +2,7 @@
 import sqlite3
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 from contextlib import contextmanager
@@ -148,7 +149,42 @@ def init_db(db_path: Optional[Path] = None):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sources_job_id ON sources(job_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_evidence_items_job_id ON evidence_items(job_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analysis_stages_job_id ON analysis_stages(job_id);")
+
+        # System Settings Table for dynamic runtime configuration
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+        """)
         logger.info(f"Initialized SQLite database at {path}")
+
+def get_system_setting(key: str, default: Optional[str] = None, db_path: Optional[Path] = None) -> Optional[str]:
+    """Retrieve persistent system setting value from SQLite."""
+    path = db_path or get_db_path()
+    try:
+        with get_connection(path) as conn:
+            row = conn.execute("SELECT value FROM system_settings WHERE key = ?", (key,)).fetchone()
+            if row:
+                return str(row["value"])
+    except Exception as e:
+        logger.warning(f"Failed to read system setting '{key}': {e}")
+    return default
+
+def set_system_setting(key: str, value: str, db_path: Optional[Path] = None) -> None:
+    """Store or update a persistent system setting value in SQLite."""
+    path = db_path or get_db_path()
+    init_db(path)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with get_connection(path) as conn:
+        conn.execute("""
+            INSERT INTO system_settings (key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at;
+        """, (key, value, now_iso))
 
 def save_analysis(analysis: AnalysisResponse, db_path: Optional[Path] = None) -> None:
     """Save an analysis response and its audit steps into SQLite."""

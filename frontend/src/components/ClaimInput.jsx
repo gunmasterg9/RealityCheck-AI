@@ -12,7 +12,9 @@ export default function ClaimInput({
   setProviderPreference,
   sampleClaims,
   onAnalyze,
-  isLoading
+  isLoading,
+  activeLocalModel = 'qwen3:1.7b',
+  isLocalMultimodal = false
 }) {
   const [inputType, setInputType] = useState('auto');
   const [showContext, setShowContext] = useState(false);
@@ -330,7 +332,7 @@ export default function ClaimInput({
                 />
                 ☁️ Cloud Gemini (Fastest)
               </label>
-              <label className={`radio-pill ${providerPreference === 'local' ? 'selected' : ''}`} title="Ollama Qwen 3 1.7B - CPU optimized (~10s, low RAM footprint)">
+              <label className={`radio-pill ${providerPreference === 'local' ? 'selected' : ''}`} title={`Ollama ${activeLocalModel} - CPU optimized local inference`}>
                 <input
                   type="radio"
                   name="provider"
@@ -339,7 +341,7 @@ export default function ClaimInput({
                   onChange={() => setProviderPreference('local')}
                   disabled={isLoading}
                 />
-                💻 Local CPU (Qwen 3 1.7B)
+                💻 Local CPU ({activeLocalModel || 'Qwen 3 1.7B'})
               </label>
               <label className={`radio-pill ${providerPreference === 'offline' ? 'selected' : ''}`} title="Strict local-only mode, no external cloud calls">
                 <input
@@ -350,10 +352,31 @@ export default function ClaimInput({
                   onChange={() => setProviderPreference('offline')}
                   disabled={isLoading}
                 />
-                🔒 Offline Local
+                🔒 Offline Local ({activeLocalModel || 'Local'})
               </label>
             </div>
           </div>
+
+          {/* Multimodal Capability Notice when using text-only model with image */}
+          {imageData && !isLocalMultimodal && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '0.74rem',
+              color: '#FCD34D',
+              margin: '8px 0'
+            }}>
+              <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+              <span>
+                Active local model (<strong>{activeLocalModel}</strong>) is text-only. Visual evidence will be analyzed using <strong>Google Cloud Gemini</strong> (or switch local model to <strong>gemma4:e4b</strong> in the top bar).
+              </span>
+            </div>
+          )}
 
           <div className="action-buttons">
             {(claim || context || imageData) && (

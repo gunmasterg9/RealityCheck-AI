@@ -33,6 +33,8 @@ export default function App() {
   const [providerPreference, setProviderPreference] = useState('auto');
   
   const [providers, setProviders] = useState(null);
+  const [activeLocalModel, setActiveLocalModel] = useState('qwen3:1.7b');
+  const [isLocalMultimodal, setIsLocalMultimodal] = useState(false);
   const [sampleClaims, setSampleClaims] = useState([]);
   const [history, setHistory] = useState([]);
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
@@ -168,6 +170,20 @@ export default function App() {
     }
   };
 
+  const handleProvidersRefresh = async () => {
+    try {
+      const p = await fetchProviders();
+      setProviders(p);
+    } catch (err) {
+      console.warn('Failed to refresh providers:', err);
+    }
+  };
+
+  const handleModelChanged = (modelName, modelInfo) => {
+    setActiveLocalModel(modelName);
+    setIsLocalMultimodal(modelInfo?.is_multimodal ?? false);
+  };
+
   return (
     <div className="app-root">
       <Header
@@ -175,6 +191,8 @@ export default function App() {
         onOpenHistory={() => setIsHistoryOpen(true)}
         historyCount={history.length}
         onOpenBenchmark={() => setIsBenchmarkOpen(true)}
+        onModelChanged={handleModelChanged}
+        onProvidersRefresh={handleProvidersRefresh}
       />
 
       <main className="container main-content">
@@ -191,7 +209,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Claim Input Component with Multimodal File Upload */}
+        {/* Claim Input Component with Multimodal File Upload & Model Selector awareness */}
         <ClaimInput
           claim={claim}
           setClaim={setClaim}
@@ -204,6 +222,8 @@ export default function App() {
           sampleClaims={sampleClaims}
           onAnalyze={handleAnalyze}
           isLoading={isLoading}
+          activeLocalModel={activeLocalModel}
+          isLocalMultimodal={isLocalMultimodal}
         />
 
         {/* Pipeline Progress Indicator */}
