@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Send, FileText, Sparkles, Trash2, Image as ImageIcon, X, Upload } from 'lucide-react';
+import { Send, FileText, Sparkles, Trash2, Image as ImageIcon, X, Upload, Globe, MessageSquare, Zap, CheckCircle2, Shield } from 'lucide-react';
 
 export default function ClaimInput({
   claim,
@@ -14,9 +14,15 @@ export default function ClaimInput({
   onAnalyze,
   isLoading
 }) {
+  const [inputType, setInputType] = useState('auto');
   const [showContext, setShowContext] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Script detection for Hindi & Gujarati
+  const isHindi = /[\u0900-\u097F]/.test(claim);
+  const isGujarati = /[\u0A80-\u0AFF]/.test(claim);
+  const isUrl = /^https?:\/\//i.test(claim.trim());
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
@@ -51,6 +57,14 @@ export default function ClaimInput({
     setContext(sample.context || '');
     if (sample.context) setShowContext(true);
 
+    if (sample.claim.startsWith('http')) {
+      setInputType('url');
+    } else if (sample.category.includes('WhatsApp')) {
+      setInputType('message');
+    } else {
+      setInputType('auto');
+    }
+
     if (sample.image_url) {
       try {
         const res = await fetch(sample.image_url);
@@ -80,7 +94,23 @@ export default function ClaimInput({
     handleRemoveImage();
   };
 
-  const isClaimValid = claim.trim().length >= 3;
+  const getPlaceholder = () => {
+    switch (inputType) {
+      case 'url':
+        return 'Paste website or article link (e.g. https://www.reuters.com/... or https://x.com/...)';
+      case 'message':
+        return 'Paste forwarded WhatsApp or Telegram message (supports Hindi, Gujarati, English, etc.)';
+      case 'image':
+        return 'Upload screenshot below or describe the image claim here...';
+      case 'direct':
+        return 'Enter a direct factual claim (e.g. WHO declared aspartame an instant Class 1 carcinogen)...';
+      case 'auto':
+      default:
+        return 'Paste ANY website URL, WhatsApp/Telegram forward, news headline, or factual claim to verify with real-time web evidence...';
+    }
+  };
+
+  const isClaimValid = claim.trim().length >= 3 || (imageData && inputType === 'image');
 
   return (
     <div className="panel claim-panel">
@@ -89,7 +119,7 @@ export default function ClaimInput({
         <div className="sample-claims-bar">
           <div className="sample-label">
             <Sparkles size={14} className="sparkle-icon" />
-            <span>Curated Gemma 4 Multimodal Demos:</span>
+            <span>Curated Gemma 4 & Fact-Check Demos:</span>
           </div>
           <div className="sample-pills">
             {sampleClaims.map((sample) => (
@@ -109,22 +139,83 @@ export default function ClaimInput({
         </div>
       )}
 
-      <form onSubmit={(e) => { e.preventDefault(); if (isClaimValid && !isLoading) onAnalyze(); }}>
+      {/* Input Mode Selector Tabs */}
+      <div className="mode-selector-bar" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        {[
+          { id: 'auto', label: '⚡ Auto Detect', icon: Zap },
+          { id: 'url', label: '🔗 Web / News URL', icon: Globe },
+          { id: 'message', label: '💬 WhatsApp / Telegram Forward', icon: MessageSquare },
+          { id: 'image', label: '📸 Screenshot / Image', icon: ImageIcon },
+          { id: 'direct', label: '⚖️ Direct Claim', icon: Shield }
+        ].map((tab) => {
+          const TabIcon = tab.icon;
+          const isSelected = inputType === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              className={`mode-tab-btn ${isSelected ? 'active' : ''}`}
+              onClick={() => setInputType(tab.id)}
+              disabled={isLoading}
+              style={{
+                background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(30, 41, 59, 0.6)',
+                color: isSelected ? '#38BDF8' : '#94A3B8',
+                border: isSelected ? '1px solid #38BDF8' : '1px solid rgba(148, 163, 184, 0.15)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <TabIcon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <form onSubmit={(e) => { e.preventDefault(); if (isClaimValid && !isLoading) onAnalyze(inputType); }}>
         {/* Main Claim Textarea */}
         <div className="input-field-group">
-          <div className="field-header">
-            <label className="field-label">
-              Claim to Challenge & Investigate <span className="req">*</span>
-            </label>
-            <span className="char-count">{claim.length} / 2000</span>
+          <div className="field-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label className="field-label" style={{ fontWeight: 600, color: '#F1F5F9' }}>
+                Content / Claim to Verify <span className="req" style={{ color: '#F43F5E' }}>*</span>
+              </label>
+
+              {/* Real-time badges */}
+              {isHindi && (
+                <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.2)', color: '#F59E0B', fontWeight: 600 }}>
+                  🇮🇳 Hindi (हिंदी) Detected
+                </span>
+              )}
+              {isGujarati && (
+                <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(234, 88, 12, 0.2)', color: '#FB923C', fontWeight: 600 }}>
+                  🇮🇳 Gujarati (ગુજરાતી) Detected
+                </span>
+              )}
+              {isUrl && (
+                <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.2)', color: '#38BDF8', fontWeight: 600 }}>
+                  🌐 Public URL (Safe Crawl)
+                </span>
+              )}
+            </div>
+            <span className="char-count" style={{ fontSize: '0.75rem', color: '#64748B' }}>{claim.length} / 2000</span>
           </div>
+
           <textarea
             className="styled-textarea claim-textarea"
-            placeholder="e.g. The company announced a 100,000x quantum supremacy speedup over supercomputers on general optimization workloads..."
+            placeholder={getPlaceholder()}
             value={claim}
             onChange={(e) => setClaim(e.target.value.slice(0, 2000))}
             rows={3}
             disabled={isLoading}
+            style={{ width: '100%', boxSizing: 'border-box' }}
           />
         </div>
 
@@ -133,7 +224,7 @@ export default function ClaimInput({
           <div className="image-header-row">
             <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <ImageIcon size={15} style={{ color: '#A78BFA' }} />
-              <span>Visual Evidence / Chart Screenshot (Gemma 4 Multimodal)</span>
+              <span>Visual Evidence / Screenshot (Gemma 4 Multimodal)</span>
             </label>
             <span className="optional-tag">Optional</span>
           </div>
@@ -145,10 +236,10 @@ export default function ClaimInput({
             >
               <Upload size={20} className="upload-icon" />
               <div className="dropzone-text">
-                <strong>Click to upload chart, screenshot, or product label</strong> (PNG, JPG, WebP)
+                <strong>Click to upload chart, screenshot, or social post image</strong> (PNG, JPG, WebP)
               </div>
               <div className="dropzone-sub">
-                Gemma 4 will inspect footnotes, chart axes, fine-print asterisks, and nutritional tables.
+                Gemma 4 will inspect footnotes, chart axes, fine-print asterisks, and text inside the image.
               </div>
               <input
                 ref={fileInputRef}
@@ -188,9 +279,9 @@ export default function ClaimInput({
               onClick={() => setShowContext(!showContext)}
             >
               <FileText size={15} />
-              <span>{showContext ? 'Hide' : 'Add'} Supplementary Text Excerpts</span>
+              <span>{showContext ? 'Hide' : 'Add'} Supplementary Context / Sender Metadata</span>
               {context && !showContext && (
-                <span className="context-attached-indicator">Text Attached</span>
+                <span className="context-attached-indicator">Attached</span>
               )}
             </button>
             {context && (
@@ -202,7 +293,7 @@ export default function ClaimInput({
             <div className="context-body">
               <textarea
                 className="styled-textarea context-textarea"
-                placeholder="Paste press release text, official transcripts, or background documentation..."
+                placeholder="Paste press release text, forwarded chain headers, or background documentation..."
                 value={context}
                 onChange={(e) => setContext(e.target.value.slice(0, 12000))}
                 rows={3}
@@ -274,12 +365,12 @@ export default function ClaimInput({
               {isLoading ? (
                 <>
                   <div className="spinner" style={{ width: 16, height: 16, border: '2px solid #FFF', borderTopColor: 'transparent', borderRadius: '50%' }} />
-                  <span>Auditing with Gemma 4...</span>
+                  <span>Verifying across 6 stages...</span>
                 </>
               ) : (
                 <>
                   <Send size={16} />
-                  <span>Challenge Claim</span>
+                  <span>Verify with Real-Time Evidence</span>
                 </>
               )}
             </button>

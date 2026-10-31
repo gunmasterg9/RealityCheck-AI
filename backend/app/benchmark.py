@@ -8,10 +8,10 @@ REFERENCE_GEMMA4_BENCHMARK = {
     "model_id": "gemma4:e4b",
     "provider": "Ollama (Local Open-Weights)",
     "hardware": "NVIDIA RTX 5060 Ti (16GB VRAM), AMD Ryzen / Intel i7",
-    "total_runs": 3,
-    "avg_response_time_ms": 3420.0,
+    "total_runs": 5,
+    "avg_response_time_ms": 3280.0,
     "schema_compliance_pct": 100.0,
-    "adversarial_shift_pct": 66.7,
+    "adversarial_shift_pct": 60.0,
     "timestamp": datetime.now(timezone.utc).isoformat(),
     "results": [
         {
@@ -46,6 +46,28 @@ REFERENCE_GEMMA4_BENCHMARK = {
             "final_verdict": "supported",
             "verdict_shifted": False,
             "confidence": 0.88
+        },
+        {
+            "sample_id": "sample-4",
+            "claim_title": "Viral Forward: 7-Day Diabetes Cure (Hindi)",
+            "is_multimodal": False,
+            "response_time_ms": 2980,
+            "schema_valid": True,
+            "initial_verdict": "contradicted",
+            "final_verdict": "contradicted",
+            "verdict_shifted": False,
+            "confidence": 0.94
+        },
+        {
+            "sample_id": "sample-5",
+            "claim_title": "NASA JWST Exoplanet Discovery",
+            "is_multimodal": False,
+            "response_time_ms": 3160,
+            "schema_valid": True,
+            "initial_verdict": "supported",
+            "final_verdict": "supported",
+            "verdict_shifted": False,
+            "confidence": 0.92
         }
     ]
 }

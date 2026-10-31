@@ -11,9 +11,14 @@ from app.schemas import ProviderDetail
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT = object()
+
 class GeminiProvider(BaseAIProvider):
-    def __init__(self, api_key: Optional[str] = None, model_id: Optional[str] = None):
-        self._api_key = api_key or settings.gemini_api_key
+    def __init__(self, api_key: Any = _DEFAULT, model_id: Optional[str] = None):
+        if api_key is _DEFAULT:
+            self._api_key = settings.gemini_api_key
+        else:
+            self._api_key = api_key
         self._model_id = model_id or settings.cloud_model_id
 
     @property
@@ -95,11 +100,14 @@ class GeminiProvider(BaseAIProvider):
 
     async def generate_json(
         self,
-        prompt: str,
+        prompt: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        images: Optional[List[str]] = None
+        images: Optional[List[str]] = None,
+        user_prompt: Optional[str] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         """Call Gemini model requesting JSON output and optional images."""
+        final_prompt = prompt or user_prompt or ""
         if not self._api_key:
             raise RuntimeError(
                 "Gemini API key is not configured. Cloud provider requires GEMINI_API_KEY in backend/.env or environment."
@@ -114,7 +122,7 @@ class GeminiProvider(BaseAIProvider):
             contents = []
             if system_prompt:
                 contents.append(f"System Instructions:\n{system_prompt}\n\nTask:\n")
-            contents.append(prompt)
+            contents.append(final_prompt)
 
             # Process any multimodal image parts
             if images:

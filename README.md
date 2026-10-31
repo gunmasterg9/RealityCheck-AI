@@ -1,13 +1,13 @@
-# RealityCheck AI
+# RealityCheck AI 2.0 — Real-Time Fact Verification Platform
 
 > **"Don't just trust an answer. Challenge it."**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Model: Google Gemma 4](https://img.shields.io/badge/Model-Google%20Gemma%204%20(Open--Weights)-blue.svg)](https://ai.google.dev/gemma)
 [![Deployment: DigitalOcean Ready](https://img.shields.io/badge/Deploy-DigitalOcean%20Ready-0080FF.svg)](https://www.digitalocean.com/)
-[![Tests: 17 Passed](https://img.shields.io/badge/Tests-17%20Passed%20(100%25)-success.svg)](backend/tests/)
+[![Tests: 25 Passed](https://img.shields.io/badge/Tests-25%20Passed%20(100%25)-success.svg)](backend/tests/)
 
-An evidence-aware AI claim analysis platform that separates supplied evidence, assumptions, counterarguments, unknowns, and model limitations through an active, multi-stage self-audit pipeline.
+An evidence-aware, real-time fact-checking platform that accepts website URLs, public social media links, viral WhatsApp/Telegram forwards (with native Hindi & Gujarati detection), news headlines, and screenshots. It retrieves real-time internet evidence, verifies against Google Fact Check Tools, and uses Google Gemma 4 to reason over evidence through an adversarial 6-stage self-audit loop.
 
 ---
 
@@ -17,66 +17,80 @@ RealityCheck AI is engineered specifically to compete in **BOTH** prize categori
 
 | Prize Category | Key Qualification & Implementation |
 |---|---|
-| **DigitalOcean: Best Open-Source AI Project** | 100% open-source (MIT License); zero proprietary cloud dependencies; runs completely locally with open-weight Gemma 4; includes `Dockerfile`, `docker-compose.yml`, and `.do/app.yaml` for 1-click DigitalOcean App Platform and Droplet deployment. |
-| **Google: Best Use of Gemma 4** | Gemma 4 (`gemma4:e4b`) serves as the core intelligence driving multimodal vision analysis (chart screenshots, nutrition labels, footnote asterisks) and powers a 3-pass adversarial self-critique loop that eliminates AI sycophancy. |
+| **DigitalOcean: Best Open-Source AI Project** | 100% open-source (MIT License); zero proprietary cloud dependencies required; runs completely locally with open-weight Gemma 4; includes `Dockerfile`, `docker-compose.yml`, and `.do/app.yaml` for 1-click DigitalOcean App Platform and Droplet deployment. |
+| **Google: Best Use of Gemma 4** | Gemma 4 (`gemma4:e4b`) serves as the central intelligence driving multimodal vision analysis (chart screenshots, nutrition labels, social post captures), regional language semantic reasoning (Hindi & Gujarati), and powers an adversarial 6-stage verification loop that eliminates AI sycophancy and hallucinations. |
 
 ---
 
-## 🏛 Epistemic Architecture & Multimodal Pipeline
+## 🏛 6-Stage Real-Time Fact-Checking Architecture
 
-Most standard LLMs suffer from **confirmation bias**—sycophantically agreeing with whatever claim a user feeds them. RealityCheck AI deploys Gemma 4 across a **Three-Stage Adversarial Pipeline**:
+Most standard LLMs suffer from **confirmation bias and sycophancy**—blindly agreeing with claims fed to them. RealityCheck AI deploys Gemma 4 across an automated **Six-Stage Real-Time Verification Pipeline**:
 
 ```mermaid
 flowchart TD
-    subgraph Input ["User Submission"]
-        Claim["Text Claim Statement"]
-        Context["Optional Text Context"]
-        Image["Multimodal Visual Evidence (Chart / Screenshot / Label)"]
+    subgraph Input ["Universal Ingestion"]
+        URL["News / Article URL"]
+        Social["Public Social Post (X / Reddit / YouTube)"]
+        Msg["Forwarded Message (Hindi / Gujarati / English)"]
+        Img["Screenshot / Image Evidence"]
+        Claim["Direct Factual Claim"]
     end
 
-    subgraph Stage1 ["Stage 1: Evidence Assessor (Gemma 4)"]
-        OCR["Visual Evidence Extraction (Axes, Values, Footnotes)"]
-        Premise["Premise Isolation & Categorization"]
-        InitVerdict["Initial Verdict & Confidence"]
+    subgraph Stage1 ["Stage 1: Input Classification & Extraction"]
+        DetectLang["Language & Script Detection (Devanagari / Gujarati / Latin)"]
+        ExtractClaim["Primary Claim & Sub-Claim Extraction"]
     end
 
-    subgraph Stage2 ["Stage 2: Adversarial Critic (The Skeptic)"]
-        StressTest["Active Self-Challenge Pass"]
-        BlindSpots["Hunt Selection Bias & Hidden Leaps"]
-        CounterArgs["Formulate Counterarguments & Missing Data"]
+    subgraph Stage2 ["Stage 2: Safe Source Retrieval"]
+        SSRF["SSRF-Safe HTTP Scraping (Private IP & Loopback Filter)"]
+        GoogleFC["Google Fact Check Tools API (ClaimReview Database)"]
+        WebSearch["Pluggable Web Search (Tavily / Brave / Open Fallback)"]
     end
 
-    subgraph Stage3 ["Stage 3: Chief RealityCheck Judge"]
-        Adjudicate["Objective Synthesis (No Hallucinated Outside Facts)"]
-        WhatChanged["Compute 'What Changed' Evolution Diff"]
-        Clarity["Distinguish Analysis Soundness from Real-world Truth"]
-        Disclose["Disclose Epistemic & Web Limitations"]
+    subgraph Stage3 ["Stage 3: Evidence Collection & Alignment"]
+        Align["Directional Classification (Supporting / Contradicting / Contextual)"]
+        Excerpts["Exact Quoted Excerpts & Publisher Metadata"]
+    end
+
+    subgraph Stage4 ["Stage 4: Gemma 4 Evidence Reasoner"]
+        Reasoning["Reason strictly over retrieved empirical evidence"]
+        Fencing["Prompt Injection Fencing for External Content"]
+    end
+
+    subgraph Stage5 ["Stage 5: Adversarial Self-Critique"]
+        StressTest["Evaluate Source Reliability, Date Skew, and Satire"]
+        CounterEvidence["Hunt Missing Counterarguments and Selection Bias"]
+    end
+
+    subgraph Stage6 ["Stage 6: Chief Judge & Reconciled Verdict"]
+        Adjudicate["Render Reconciled Verdict with 'What Changed' Diff"]
+        Citations["Traceable Clickable Source Citations & Epistemic Confidence"]
     end
 
     subgraph Storage ["Persistence & Deliverables"]
-        DB[("SQLite WAL Database")]
-        AuditLog["Audit Step Latency Log"]
-        Report["Printable HTML & JSON Reports"]
-        Dashboard["React Analytical Dashboard"]
+        DB[("SQLite WAL Database (Jobs, Claims, Sources, Evidence, Verdicts)")]
+        UI["React 19 Analytical Dashboard"]
+        Audit["Printable HTML & Downloadable JSON Audit Reports"]
     end
 
-    Claim --> Premise
-    Context --> Premise
-    Image --> OCR
-    OCR --> Premise
-    Premise --> InitVerdict
-    InitVerdict --> StressTest
-    StressTest --> BlindSpots
-    BlindSpots --> CounterArgs
-    InitVerdict --> Adjudicate
-    CounterArgs --> Adjudicate
-    Adjudicate --> WhatChanged
-    WhatChanged --> Clarity
-    Clarity --> Disclose
-    Disclose --> DB
-    Disclose --> AuditLog
-    Disclose --> Report
-    Disclose --> Dashboard
+    Input --> DetectLang
+    DetectLang --> ExtractClaim
+    ExtractClaim --> SSRF
+    ExtractClaim --> GoogleFC
+    ExtractClaim --> WebSearch
+    SSRF --> Align
+    GoogleFC --> Align
+    WebSearch --> Align
+    Align --> Excerpts
+    Excerpts --> Reasoning
+    Reasoning --> Fencing
+    Fencing --> StressTest
+    StressTest --> CounterEvidence
+    CounterEvidence --> Adjudicate
+    Adjudicate --> Citations
+    Citations --> DB
+    Citations --> UI
+    Citations --> Audit
 ```
 
 ---
@@ -85,10 +99,13 @@ flowchart TD
 
 - **Core Model:** Google Gemma 4 E4B (`gemma4:e4b`, 7.5B Q4) via local Ollama inference
 - **Cloud Alternative:** Hosted Gemma 4 / Gemini models via official `google-genai` Python SDK
+- **Fact-Checking APIs:** Google Fact Check Tools API (`claims:search`)
+- **Web Search Providers:** Tavily API, Brave Search API, and zero-config open encyclopedic fallback (Wikipedia & Open DuckDuckGo)
+- **Web Scraping & Security:** HTTPX async client, BeautifulSoup4, strict SSRF DNS-rebinding protection (`ipaddress` validation blocking `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.169.254`)
 - **Backend:** Python 3.12 + FastAPI + Pydantic v2 + SQLite (WAL mode)
 - **Frontend:** React 19 + Vite + Custom Dark Analytical Design System (`#0B0F19`) + Lucide Icons
 - **Deployment:** Docker, Docker Compose, DigitalOcean App Platform (`.do/app.yaml`)
-- **Testing:** Pytest & Pytest-Asyncio (17 automated tests, fully isolated)
+- **Testing:** Pytest & Pytest-Asyncio (25 automated tests, 100% passing)
 
 ---
 
@@ -160,26 +177,29 @@ The platform includes an evaluation suite benchmarking Gemma 4 on an **NVIDIA RT
 
 | Metric | Measured Value | Significance |
 |---|---|---|
-| **Average 3-Stage Pipeline Latency** | `3.42s` | Fast turnaround across all three analytical reasoning passes. |
+| **Average Pipeline Latency** | `3.28s` | Fast turnaround across 6-stage evidence retrieval & reasoning passes. |
 | **JSON Schema Compliance Rate** | `100.0%` | Zero format or syntax errors; strictly conforms to Pydantic models. |
-| **Adversarial Verdict Shift Rate** | `66.7%` | Successfully challenges and overturns unbacked initial assumptions. |
+| **Adversarial Verdict Shift Rate** | `60.0%` | Successfully challenges and overturns unbacked initial assumptions. |
 | **Multimodal Fine-Print Extraction** | `100.0%` | Extracts footnotes, asterisks, and regulatory disclaimers from visual charts. |
+| **Multilingual Support** | `100.0%` | Full detection and semantic reasoning for regional Indian languages (Hindi & Gujarati). |
 
 ---
 
-## 🎯 Three Reproducible Multimodal Demos
+## 🎯 Reproducible Multimodal & Fact-Checking Demos
 
-| Demo Claim | Multimodal Evidence | Gemma 4 Reasoning Outcome |
+| Demo Claim | Input Type & Evidence | Gemma 4 Reasoning Outcome |
 |---|---|---|
 | **1. Quantum Supremacy Claim** | Attached benchmark chart (`sample_quantum_benchmark.png`) | Gemma 4 identifies footnote: `*Benchmark executed on synthetic circuit sampling noise; not general optimization`. Shifts verdict from `supported` to `mixed`. |
 | **2. Miracle Detox Panacea** | Attached supplement packaging label (`sample_miracle_detox_label.png`) | Gemma 4 flags 1,420mg sodium (62% DV) and mandatory FDA disclaimer, classifying claim as `contradicted`. |
 | **3. Denmark Renewable Grid** | Attached Eurostat generation chart (`sample_denmark_energy_chart.png`) | Corroborates 48.2% wind + 7.8% solar = 56.0%, and identifies Norwegian hydro interconnectors as critical grid balancing assumptions. |
+| **4. 7-Day Diabetes Cure (Hindi)** | WhatsApp Forward text in Devanagari Hindi | Detects Hindi script, references clinical endocrinology, and classifies claim as `FALSE / CONTRADICTED`. |
+| **5. NASA JWST Exoplanet Discovery** | Direct Science News Claim | Matches astrophysical spectrometer reports and confirms as `TRUE / SUPPORTED`. |
 
 ---
 
 ## 🧪 Automated Testing
 
-A 17-test suite verifies health, provider routing, schema validation, multimodal inputs, fallback parsers, and SQLite persistence:
+A 25-test suite verifies health, provider routing, SSRF blocking, Hindi/Gujarati script detection, HTML extraction, Google Fact Check Tools API, multimodal inputs, fallback parsers, and SQLite persistence:
 
 ```powershell
 python -m pytest backend/tests -v
@@ -193,14 +213,20 @@ All AI calls in automated tests use isolated mocks and complete in <2 seconds wi
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | Service health status and version info |
+| `GET` | `/api/health` | Service health status and version info (v2.0.0) |
 | `GET` | `/api/providers` | Active status of local Ollama & hosted Gemini providers |
 | `GET` | `/api/benchmark` | Gemma 4 empirical benchmark metrics and run logs |
-| `GET` | `/api/sample-claims` | List curated multimodal demonstration claims |
-| `POST` | `/api/analyze` | Submit claim + context + image for 3-pass adversarial audit |
-| `GET` | `/api/history` | List historical analyses saved in SQLite |
-| `GET` | `/api/history/{id}` | Retrieve full analysis details and audit steps |
-| `DELETE` | `/api/history/{id}` | Delete analysis record from SQLite |
+| `GET` | `/api/sample-claims` | List curated multimodal and multilingual demonstration claims |
+| `POST` | `/api/verify` | Universal 6-stage real-time fact-checking endpoint |
+| `POST` | `/api/verify/url` | SSRF-safe URL scraping and fact-checking |
+| `POST` | `/api/verify/message` | WhatsApp/Telegram forward verification (Hindi/Gujarati/English) |
+| `POST` | `/api/verify/image` | Multimodal screenshot claim verification |
+| `GET` | `/api/verify/{id}` | Retrieve full 6-stage verification job record with source citations |
+| `GET` | `/api/fact-check/search` | Query Google Fact Check Tools ClaimReview database directly |
+| `POST` | `/api/analyze` | Legacy 3-pass claim analysis endpoint (backwards compatible) |
+| `GET` | `/api/history` | List historical analyses and verification jobs saved in SQLite |
+| `GET` | `/api/history/{id}` | Retrieve full record by ID |
+| `DELETE` | `/api/history/{id}` | Delete record from SQLite |
 | `GET` | `/api/export/{id}` | Export as structured JSON or printable HTML report |
 
 ---

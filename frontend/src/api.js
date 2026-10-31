@@ -47,6 +47,38 @@ export async function analyzeClaim(claim, context = null, providerPreference = '
   return res.json();
 }
 
+/**
+ * RealityCheck AI 2.0 Universal Fact Verification API call
+ */
+export async function verifyClaim(inputText, inputType = 'auto', providerPreference = 'auto', imageData = null, languageHint = null) {
+  const res = await fetch(`${API_BASE}/api/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      input_text: inputText.trim(),
+      input_type: inputType,
+      image_data: imageData || null,
+      provider_preference: providerPreference,
+      language_hint: languageHint || null
+    })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(errorData.detail || `Verification request failed: HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function fetchFactCheckSearch(query, hl = null) {
+  const params = new URLSearchParams({ query });
+  if (hl) params.append('hl', hl);
+  const res = await fetch(`${API_BASE}/api/fact-check/search?${params.toString()}`);
+  if (!res.ok) throw new Error(`Fact check query failed: HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function fetchHistory(limit = 30, offset = 0) {
   const res = await fetch(`${API_BASE}/api/history?limit=${limit}&offset=${offset}`);
   if (!res.ok) throw new Error(`Failed to fetch history: HTTP ${res.status}`);

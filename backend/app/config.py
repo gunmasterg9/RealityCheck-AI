@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
     app_name: str = "RealityCheck AI"
-    app_version: str = "1.0.0"
+    app_version: str = "2.0.0"
     environment: str = Field(default="development", alias="REALITYCHECK_ENV")
     
     # Server
@@ -24,7 +24,18 @@ class Settings(BaseSettings):
     
     # Cloud Inference (Optional Google Gemini)
     gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
-    cloud_model_id: str = Field(default="gemini-2.5-flash", alias="CLOUD_MODEL_ID")
+    cloud_model_id: str = Field(default="gemini-3.5-flash", alias="CLOUD_MODEL_ID")
+    
+    # External Fact-Checking & Search APIs
+    fact_check_api_key: Optional[str] = Field(default=None, alias="FACT_CHECK_API_KEY")
+    tavily_api_key: Optional[str] = Field(default=None, alias="TAVILY_API_KEY")
+    brave_search_api_key: Optional[str] = Field(default=None, alias="BRAVE_SEARCH_API_KEY")
+    web_search_provider: str = Field(default="auto", alias="WEB_SEARCH_PROVIDER")
+    
+    # Web Scraping & Security Limits
+    max_scrape_bytes: int = 2 * 1024 * 1024  # 2MB
+    max_scrape_timeout_seconds: int = 10
+    max_redirects: int = 5
     
     # Database
     sqlite_db_path: str = Field(default="realitycheck.db", alias="SQLITE_DB_PATH")
@@ -38,6 +49,11 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @property
+    def resolved_fact_check_key(self) -> Optional[str]:
+        """Returns FACT_CHECK_API_KEY if configured, or falls back to GEMINI_API_KEY."""
+        return self.fact_check_api_key or self.gemini_api_key
 
     @property
     def cors_origin_list(self) -> List[str]:

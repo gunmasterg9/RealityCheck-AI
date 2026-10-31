@@ -57,6 +57,28 @@ SAMPLE_CLAIMS: List[Dict[str, Any]] = [
         "has_image": True,
         "expected_verdict_theme": "supported",
         "description": "Gemma 4 verifies the empirical generation pie chart (Wind 48.2% + Solar 7.8% = 56.0%) and extracts regional cross-border interconnectors."
+    },
+    {
+        "id": "sample-4",
+        "title": "Viral Forward: 7-Day Diabetes Cure (Hindi)",
+        "category": "WhatsApp Forward / Regional Indian Language",
+        "claim": "पीने के पानी में नींबू और सेंधा नमक मिलाकर 7 दिनों में टाइप 2 डायबिटीज पूरी तरह ठीक हो जाती है।",
+        "context": "Forwarded message circulating widely on WhatsApp: 'सावधान! डॉक्टरों की सच्चाई सामने आ गई। केवल 7 दिन में शुगर जड़ से खत्म करें। शेयर करें सभी ग्रुप में...'",
+        "image_url": None,
+        "has_image": False,
+        "expected_verdict_theme": "contradicted",
+        "description": "Gemma 4 detects Devanagari Hindi text, checks medical consensus, and debunks unsubstantiated miracle cures with verified clinical facts."
+    },
+    {
+        "id": "sample-5",
+        "title": "NASA JWST Exoplanet Discovery",
+        "category": "Space Science & Astronomy",
+        "claim": "NASA's James Webb Space Telescope detected atmospheric carbon dioxide and methane on habitable-zone exoplanet K2-18 b.",
+        "context": "Official NASA astrophysicist briefing and peer-reviewed spectroscopic measurements from the NIRSpec instrument.",
+        "image_url": None,
+        "has_image": False,
+        "expected_verdict_theme": "supported",
+        "description": "Real-time science reporting verification cross-referenced against NASA primary press releases and scientific publications."
     }
 ]
 

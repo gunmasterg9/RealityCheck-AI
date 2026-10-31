@@ -142,3 +142,116 @@ class BenchmarkReport(BaseModel):
     adversarial_shift_pct: float
     timestamp: str
     results: List[BenchmarkRunItem]
+
+# ============================================================================
+# REALITYCHECK AI 2.0 REAL-TIME VERIFICATION SCHEMAS
+# ============================================================================
+
+InputCategory = Literal["auto", "url", "social", "message", "article", "image", "direct"]
+VerificationVerdict = Literal[
+    "TRUE / SUPPORTED",
+    "FALSE / CONTRADICTED",
+    "MISLEADING",
+    "PARTLY TRUE",
+    "OUTDATED",
+    "UNVERIFIED",
+    "INSUFFICIENT EVIDENCE"
+]
+EvidenceDirection = Literal["supporting", "contradicting", "contextual", "inconclusive"]
+SourceType = Literal[
+    "official_fact_checker",
+    "news_organization",
+    "government_scientific",
+    "encyclopedia",
+    "web_search",
+    "social_media",
+    "user_context"
+]
+
+class VerificationRequest(BaseModel):
+    input_text: str = Field(..., min_length=2, description="Claim, URL, article snippet, or forwarded message")
+    input_type: InputCategory = Field(default="auto", description="Input type category")
+    image_data: Optional[str] = Field(default=None, description="Optional Base64 or Data URI image")
+    provider_preference: ProviderType = Field(default="auto", description="Preferred AI provider: auto, local, or cloud")
+    language_hint: Optional[str] = Field(default=None, description="Optional language hint (e.g. 'hi', 'gu', 'en')")
+
+class VerifyUrlRequest(BaseModel):
+    url: str = Field(..., description="Target website or article URL")
+    provider_preference: ProviderType = Field(default="auto")
+
+class VerifyMessageRequest(BaseModel):
+    message: str = Field(..., description="Pasted WhatsApp / Telegram forwarded message text")
+    sender_context: Optional[str] = Field(default=None, description="Optional metadata or forward tag context")
+    provider_preference: ProviderType = Field(default="auto")
+
+class VerifyImageRequest(BaseModel):
+    image_data: str = Field(..., description="Base64 encoded image or Data URI")
+    claim_hint: Optional[str] = Field(default=None, description="Optional hint about the claim depicted")
+    provider_preference: ProviderType = Field(default="auto")
+
+class ClaimReviewItem(BaseModel):
+    publisher: str
+    rating: str
+    claim_text: str
+    review_url: str
+    review_title: Optional[str] = None
+    review_date: Optional[str] = None
+    publisher_site: Optional[str] = None
+    source_type: str = "official_fact_checker"
+
+class SourceItem(BaseModel):
+    id: str
+    url: str
+    title: str
+    publisher: str
+    publish_date: Optional[str] = None
+    source_type: SourceType = "web_search"
+    reliability_score: float = 0.8
+
+class EvidenceRecord(BaseModel):
+    id: str
+    claim_id: str
+    source_url: str
+    publisher: str
+    excerpt: str
+    direction: EvidenceDirection
+    relevance_score: float = 0.85
+
+class ExtractedClaim(BaseModel):
+    id: str
+    claim_text: str
+    category: str = "factual"
+    order: int = 1
+
+class VerificationStageAudit(BaseModel):
+    stage_number: int
+    stage_name: str
+    duration_ms: int = 0
+    status: Literal["completed", "skipped", "error"] = "completed"
+    summary: str
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+class VerificationJobResponse(BaseModel):
+    id: str
+    input_type: str
+    raw_input: str
+    detected_language: Dict[str, Any] = Field(default_factory=dict)
+    primary_claim: str
+    extracted_claims: List[ExtractedClaim] = Field(default_factory=list)
+    fact_check_matches: List[ClaimReviewItem] = Field(default_factory=list)
+    sources: List[SourceItem] = Field(default_factory=list)
+    evidence: List[EvidenceRecord] = Field(default_factory=list)
+    final_verdict: VerificationVerdict
+    initial_verdict: str
+    assessment_confidence: float = Field(..., ge=0.0, le=1.0)
+    soundness_explanation: str
+    verdict_summary: str
+    what_changed: str
+    supporting_points: List[str] = Field(default_factory=list)
+    contradicting_points: List[str] = Field(default_factory=list)
+    limitations_disclaimer: List[str] = Field(default_factory=list)
+    provider_used: str
+    model_used: str
+    stages: List[VerificationStageAudit] = Field(default_factory=list)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+

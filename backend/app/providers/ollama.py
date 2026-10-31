@@ -118,17 +118,20 @@ class OllamaProvider(BaseAIProvider):
 
     async def generate_json(
         self,
-        prompt: str,
+        prompt: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        images: Optional[List[str]] = None
+        images: Optional[List[str]] = None,
+        user_prompt: Optional[str] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         """Execute chat inference with Ollama requesting JSON output format and optional multimodal images."""
+        final_prompt = prompt or user_prompt or ""
         url = f"{self._base_url}/api/chat"
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         
-        user_message: Dict[str, Any] = {"role": "user", "content": prompt}
+        user_message: Dict[str, Any] = {"role": "user", "content": final_prompt}
         if images:
             cleaned_images = [self._clean_base64_image(img) for img in images if img and img.strip()]
             if cleaned_images:

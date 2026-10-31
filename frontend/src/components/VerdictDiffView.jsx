@@ -4,23 +4,29 @@ import { ArrowRight, GitCompare, RefreshCw, Zap } from 'lucide-react';
 export default function VerdictDiffView({ analysis }) {
   if (!analysis) return null;
 
-  const { initial_assessment, adversarial_critique, final_judgment } = analysis;
+  const initialVerdict = analysis.initial_verdict || (analysis.initial_assessment && analysis.initial_assessment.initial_verdict) || 'unverified';
+  const finalVerdict = analysis.final_verdict || (analysis.final_judgment && analysis.final_judgment.verdict) || 'INSUFFICIENT EVIDENCE';
+  const whatChanged = analysis.what_changed || (analysis.final_judgment && analysis.final_judgment.what_changed) || '';
+  const initialReasoning = (analysis.initial_assessment && analysis.initial_assessment.initial_reasoning) || 'Initial evidence reasoning across retrieved web sources and ClaimReviews.';
+  const finalSummary = analysis.verdict_summary || (analysis.final_judgment && analysis.final_judgment.summary) || '';
+  const initialConfidence = Math.round(((analysis.initial_assessment && analysis.initial_assessment.confidence) || 0.8) * 100);
+  const finalConfidence = Math.round((analysis.assessment_confidence ?? (analysis.final_judgment && analysis.final_judgment.assessment_confidence) ?? 0.85) * 100);
 
   const getVerdictBadge = (verdict) => {
-    switch (verdict) {
-      case 'supported':
-        return <span className="badge badge-supported">Supported</span>;
-      case 'contradicted':
-        return <span className="badge badge-contradicted">Contradicted</span>;
-      case 'mixed':
-        return <span className="badge badge-mixed">Mixed Evidence</span>;
-      case 'insufficient_evidence':
-      default:
-        return <span className="badge badge-insufficient">Insufficient Evidence</span>;
+    const norm = String(verdict || '').toLowerCase();
+    if (norm.includes('true') || (norm.includes('support') && !norm.includes('insufficient'))) {
+      return <span className="badge badge-supported">{verdict}</span>;
     }
+    if (norm.includes('false') || norm.includes('contradict')) {
+      return <span className="badge badge-contradicted">{verdict}</span>;
+    }
+    if (norm.includes('mislead') || norm.includes('mixed') || norm.includes('part') || norm.includes('outdate')) {
+      return <span className="badge badge-mixed">{verdict}</span>;
+    }
+    return <span className="badge badge-insufficient">{verdict}</span>;
   };
 
-  const isShifted = initial_assessment.initial_verdict !== final_judgment.verdict;
+  const isShifted = String(initialVerdict).toLowerCase() !== String(finalVerdict).toLowerCase();
 
   return (
     <div className="panel diff-panel">
@@ -41,19 +47,19 @@ export default function VerdictDiffView({ analysis }) {
       </div>
 
       <div className="diff-comparison-cards">
-        {/* Stage 1: Initial Assessment */}
+        {/* Stage 1 / Initial Assessment */}
         <div className="stage-card">
           <div className="stage-card-header">
-            <span className="stage-step-tag">Stage 1</span>
-            <span className="stage-name">Initial Evidence Assessor</span>
+            <span className="stage-step-tag">Initial Pass</span>
+            <span className="stage-name">Evidence Analyzer Stance</span>
           </div>
           <div className="stage-verdict-row">
-            {getVerdictBadge(initial_assessment.initial_verdict)}
+            {getVerdictBadge(initialVerdict)}
             <span className="stage-conf">
-              Confidence: {Math.round((initial_assessment.confidence || 0) * 100)}%
+              Confidence: {initialConfidence}%
             </span>
           </div>
-          <p className="stage-reasoning">{initial_assessment.initial_reasoning}</p>
+          <p className="stage-reasoning">{initialReasoning}</p>
         </div>
 
         {/* Transition Arrow / Adversarial Bridge */}
@@ -64,26 +70,26 @@ export default function VerdictDiffView({ analysis }) {
           <span className="bridge-label">Adversarial Stress Test</span>
         </div>
 
-        {/* Stage 3: Final Reconciled Judgment */}
+        {/* Stage 3 / Final Reconciled Judgment */}
         <div className="stage-card final-stage-card">
           <div className="stage-card-header">
-            <span className="stage-step-tag final-tag">Stage 3</span>
-            <span className="stage-name">Reconciled Final Adjudication</span>
+            <span className="stage-step-tag final-tag">Final Adjudication</span>
+            <span className="stage-name">Reconciled Chief Verdict</span>
           </div>
           <div className="stage-verdict-row">
-            {getVerdictBadge(final_judgment.verdict)}
+            {getVerdictBadge(finalVerdict)}
             <span className="stage-conf">
-              Soundness: {Math.round((final_judgment.assessment_confidence || 0) * 100)}%
+              Soundness: {finalConfidence}%
             </span>
           </div>
-          <p className="stage-reasoning">{final_judgment.summary}</p>
+          <p className="stage-reasoning">{finalSummary}</p>
         </div>
       </div>
 
       {/* What Changed Highlight Box */}
       <div className="what-changed-highlight">
-        <div className="what-changed-label">What Changed:</div>
-        <p className="what-changed-text">{final_judgment.what_changed}</p>
+        <div className="what-changed-label">What Changed During Adversarial Challenge & Evidence Synthesis:</div>
+        <p className="what-changed-text">{whatChanged}</p>
       </div>
 
       <style>{`

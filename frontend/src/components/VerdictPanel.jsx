@@ -14,50 +14,83 @@ import { getExportUrl } from '../api';
 export default function VerdictPanel({ analysis }) {
   if (!analysis) return null;
 
-  const { final_judgment, id, provider_used, model_used, created_at } = analysis;
-  const verdict = final_judgment.verdict;
-  const confidenceScore = Math.round((final_judgment.assessment_confidence || 0) * 100);
+  const { id, provider_used, model_used } = analysis;
+  const verdict = analysis.final_verdict || (analysis.final_judgment && analysis.final_judgment.verdict) || 'INSUFFICIENT EVIDENCE';
+  const confidence = analysis.assessment_confidence ?? (analysis.final_judgment && analysis.final_judgment.assessment_confidence) ?? 0.75;
+  const confidenceScore = Math.round(confidence * 100);
+  const summary = analysis.verdict_summary || (analysis.final_judgment && analysis.final_judgment.summary) || '';
+  const explanation = analysis.soundness_explanation || (analysis.final_judgment && analysis.final_judgment.confidence_explanation) || 'Confidence represents evidentiary corroboration strength across retrieved sources.';
 
   const getVerdictConfig = (v) => {
-    switch (v) {
-      case 'supported':
-        return {
-          label: 'Supported',
-          badgeClass: 'badge-supported',
-          icon: CheckCircle2,
-          color: '#10B981',
-          bgGlow: 'rgba(16, 185, 129, 0.15)',
-          description: 'The supplied evidence and premises adequately substantiate this claim.'
-        };
-      case 'contradicted':
-        return {
-          label: 'Contradicted',
-          badgeClass: 'badge-contradicted',
-          icon: XCircle,
-          color: '#EF4444',
-          bgGlow: 'rgba(239, 68, 68, 0.15)',
-          description: 'The claim is directly contradicted by facts, evidence, or logical necessity.'
-        };
-      case 'mixed':
-        return {
-          label: 'Mixed Evidence',
-          badgeClass: 'badge-mixed',
-          icon: AlertCircle,
-          color: '#F59E0B',
-          bgGlow: 'rgba(245, 158, 11, 0.15)',
-          description: 'Evidence is conflicting, partial, or applies only under narrow conditions.'
-        };
-      case 'insufficient_evidence':
-      default:
-        return {
-          label: 'Insufficient Evidence',
-          badgeClass: 'badge-insufficient',
-          icon: HelpCircle,
-          color: '#A78BFA',
-          bgGlow: 'rgba(167, 139, 250, 0.15)',
-          description: 'No verified basis or context supplied. Scientific burden of proof is unmet.'
-        };
+    const norm = String(v || '').toLowerCase();
+    if (norm.includes('true') || (norm.includes('support') && !norm.includes('insufficient'))) {
+      return {
+        label: 'TRUE / SUPPORTED',
+        badgeClass: 'badge-supported',
+        icon: CheckCircle2,
+        color: '#10B981',
+        bgGlow: 'rgba(16, 185, 129, 0.15)',
+        description: 'The claim is corroborated by verified primary records, reputable reporting, or scientific evidence.'
+      };
     }
+    if (norm.includes('false') || norm.includes('contradict')) {
+      return {
+        label: 'FALSE / CONTRADICTED',
+        badgeClass: 'badge-contradicted',
+        icon: XCircle,
+        color: '#EF4444',
+        bgGlow: 'rgba(239, 68, 68, 0.15)',
+        description: 'The claim is directly contradicted or debunked by verified facts, scientific research, or official agency records.'
+      };
+    }
+    if (norm.includes('mislead')) {
+      return {
+        label: 'MISLEADING',
+        badgeClass: 'badge-mixed',
+        icon: AlertCircle,
+        color: '#F59E0B',
+        bgGlow: 'rgba(245, 158, 11, 0.15)',
+        description: 'The claim uses true facts out of context, omits crucial caveats, or draws unsubstantiated conclusions.'
+      };
+    }
+    if (norm.includes('outdate')) {
+      return {
+        label: 'OUTDATED',
+        badgeClass: 'badge-mixed',
+        icon: AlertCircle,
+        color: '#FBBF24',
+        bgGlow: 'rgba(251, 191, 36, 0.15)',
+        description: 'The statement may have been accurate in the past but has been superseded by new events, data, or scientific guidance.'
+      };
+    }
+    if (norm.includes('part') || norm.includes('mix')) {
+      return {
+        label: 'PARTLY TRUE',
+        badgeClass: 'badge-mixed',
+        icon: AlertCircle,
+        color: '#F59E0B',
+        bgGlow: 'rgba(245, 158, 11, 0.15)',
+        description: 'Some elements of the claim are accurate, but key claims remain unverified or overstated.'
+      };
+    }
+    if (norm.includes('unverif')) {
+      return {
+        label: 'UNVERIFIED',
+        badgeClass: 'badge-insufficient',
+        icon: HelpCircle,
+        color: '#818CF8',
+        bgGlow: 'rgba(129, 140, 248, 0.15)',
+        description: 'Currently circulating without sufficient independent verification or public record corroboration.'
+      };
+    }
+    return {
+      label: 'INSUFFICIENT EVIDENCE',
+      badgeClass: 'badge-insufficient',
+      icon: HelpCircle,
+      color: '#A78BFA',
+      bgGlow: 'rgba(167, 139, 250, 0.15)',
+      description: 'Public records, web searches, and fact-checking indices provide insufficient basis to confirm or refute.'
+    };
   };
 
   const config = getVerdictConfig(verdict);
@@ -79,7 +112,7 @@ export default function VerdictPanel({ analysis }) {
       <div className="verdict-meta-bar">
         <div className="meta-left">
           <span className="audit-id-badge">ID: {id.slice(0, 8)}</span>
-          <span className="provider-tag">Evaluated with {provider_used} ({model_used})</span>
+          <span className="provider-tag">Adjudicated with {provider_used} ({model_used})</span>
         </div>
         <div className="meta-actions">
           <button className="btn-secondary export-btn" onClick={handleDownloadJson} title="Download structured JSON">
@@ -123,7 +156,7 @@ export default function VerdictPanel({ analysis }) {
           <div className="conf-expl-box">
             <Info size={13} className="info-icon" />
             <p className="conf-expl-text">
-              <strong>Epistemic Distinction:</strong> {final_judgment.confidence_explanation}
+              <strong>Epistemic Distinction:</strong> {explanation}
             </p>
           </div>
         </div>
@@ -132,7 +165,7 @@ export default function VerdictPanel({ analysis }) {
       {/* Executive Summary */}
       <div className="verdict-summary-box">
         <h4 className="summary-title">Executive Adjudication Summary</h4>
-        <p className="summary-text">{final_judgment.summary}</p>
+        <p className="summary-text">{summary}</p>
       </div>
 
       <style>{`

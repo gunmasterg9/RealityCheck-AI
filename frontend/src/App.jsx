@@ -9,11 +9,15 @@ import AdversarialSection from './components/AdversarialSection';
 import LimitationsSection from './components/LimitationsSection';
 import HistoryDrawer from './components/HistoryDrawer';
 import BenchmarkModal from './components/BenchmarkModal';
+import VerificationStagesStepper from './components/VerificationStagesStepper';
+import FactCheckMatchesBanner from './components/FactCheckMatchesBanner';
+import EvidenceGrid from './components/EvidenceGrid';
 import {
   fetchProviders,
   fetchSampleClaims,
   fetchBenchmarkReport,
   analyzeClaim,
+  verifyClaim,
   fetchHistory,
   fetchAnalysisDetail,
   deleteAnalysis
@@ -59,19 +63,20 @@ export default function App() {
     loadInitialData();
   }, []);
 
-  const handleAnalyze = async () => {
-    if (!claim.trim()) return;
+  const handleAnalyze = async (inputType = 'auto') => {
+    if (!claim.trim() && !imageData) return;
 
     setIsLoading(true);
     setErrorMessage(null);
     setCurrentAnalysis(null);
 
     try {
-      const result = await analyzeClaim(claim, context, providerPreference, imageData);
+      // Use 2.0 real-time 6-stage verification pipeline
+      const result = await verifyClaim(claim, inputType, providerPreference, imageData);
       setCurrentAnalysis(result);
       fetchHistory().then(setHistory).catch(console.error);
     } catch (err) {
-      setErrorMessage(err.message || 'Analysis pipeline execution failed.');
+      setErrorMessage(err.message || 'Verification pipeline execution failed.');
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +86,7 @@ export default function App() {
     try {
       const detail = await fetchAnalysisDetail(id);
       setCurrentAnalysis(detail);
-      setClaim(detail.claim);
+      setClaim(detail.primary_claim || detail.claim || '');
       setContext(detail.context || '');
       setImageData(null);
       setIsHistoryOpen(false);
@@ -148,9 +153,32 @@ export default function App() {
         {currentAnalysis && !isLoading && (
           <div className="analysis-results-container">
             <VerdictPanel analysis={currentAnalysis} />
+
+            {/* Official Fact Check Tools Matches Banner */}
+            {currentAnalysis.fact_check_matches && currentAnalysis.fact_check_matches.length > 0 && (
+              <FactCheckMatchesBanner factChecks={currentAnalysis.fact_check_matches} />
+            )}
+
+            {/* 6-Stage Real-Time Pipeline Audit Stepper */}
+            {currentAnalysis.stages && currentAnalysis.stages.length > 0 && (
+              <VerificationStagesStepper stages={currentAnalysis.stages} />
+            )}
+
+            {/* Evidence Corpus Grid with Citations */}
+            {((currentAnalysis.sources && currentAnalysis.sources.length > 0) || (currentAnalysis.evidence && currentAnalysis.evidence.length > 0)) && (
+              <EvidenceGrid sources={currentAnalysis.sources} evidence={currentAnalysis.evidence} />
+            )}
+
+            {/* Verdict Diff / What Changed */}
             <VerdictDiffView analysis={currentAnalysis} />
-            <EvidenceSection analysis={currentAnalysis} />
-            <AdversarialSection analysis={currentAnalysis} />
+
+            {/* Supplementary Sections */}
+            {currentAnalysis.initial_assessment && (
+              <EvidenceSection analysis={currentAnalysis} />
+            )}
+            {currentAnalysis.adversarial_critique && (
+              <AdversarialSection analysis={currentAnalysis} />
+            )}
             <LimitationsSection analysis={currentAnalysis} />
           </div>
         )}
@@ -160,29 +188,29 @@ export default function App() {
           <div className="panel welcome-panel">
             <div className="welcome-header">
               <Scale size={24} className="welcome-scale-icon" />
-              <h3>RealityCheck AI: Gemma 4 Epistemic Engine</h3>
+              <h3>RealityCheck AI 2.0: Real-Time Fact Verification Platform</h3>
             </div>
             <p className="welcome-intro">
-              Engineered for the <strong>DigitalOcean Best Open-Source AI Project</strong> and <strong>Google Best Use of Gemma 4</strong> prize categories. RealityCheck AI stops sycophancy by deploying Gemma 4 across a 3-pass adversarial loop, analyzing text claims, charts, footnotes, and nutritional disclosures.
+              Engineered for the <strong>DigitalOcean Best Open-Source AI Project</strong> and <strong>Google Best Use of Gemma 4</strong> prize categories. RealityCheck AI stops sycophancy by deploying Gemma 4 across an automated 6-stage evidence retrieval and adversarial verification loop.
             </p>
 
             <div className="methodology-grid">
               <div className="method-card">
-                <div className="method-step-num">Pass 1 • Vision & Text</div>
-                <h4>Evidence Assessor</h4>
-                <p>Transcribes chart axes, footnotes, and text claims. Strictly assigns <em>insufficient_evidence</em> if empirical backing is missing.</p>
+                <div className="method-step-num">Stage 1 & 2 • Retrieval</div>
+                <h4>Safe Search & Extraction</h4>
+                <p>SSRF-safe crawling of web articles, social media links, regional Indian WhatsApp forwards (Hindi/Gujarati), and Google Fact Check Tools ClaimReview queries.</p>
               </div>
 
               <div className="method-card active-method">
-                <div className="method-step-num">Pass 2 • Adversarial</div>
-                <h4>Adversarial Skeptic</h4>
-                <p>Actively attacks the initial assessment. Hunts for synthetic benchmark traps, FDA disclaimers, and unverified assumptions.</p>
+                <div className="method-step-num">Stage 3 & 4 • Reasoning</div>
+                <h4>Gemma 4 Evidence Reasoner</h4>
+                <p>Synthesizes real-time web citations without hallucinating facts. Evaluates chart footnotes, dates, and empirical evidence.</p>
               </div>
 
               <div className="method-card">
-                <div className="method-step-num">Pass 3 • Reconcile</div>
-                <h4>Chief RealityCheck Judge</h4>
-                <p>Adjudicates disagreements without hallucinating outside evidence. Explains what changed and quantifies assessment soundness.</p>
+                <div className="method-step-num">Stage 5 & 6 • Reconcile</div>
+                <h4>Chief Judge & Adjudication</h4>
+                <p>Challenges initial assessments with adversarial self-critique, explains what changed, and provides traceable, clickable source citations.</p>
               </div>
             </div>
           </div>

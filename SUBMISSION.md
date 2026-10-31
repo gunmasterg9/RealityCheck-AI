@@ -1,7 +1,8 @@
-# RealityCheck AI — Hackathon Submission & Dual-Prize Pitch
+# RealityCheck AI 2.0 — Real-Time Fact Verification Platform
+## Dual-Prize Hackathon Submission & Architecture Pitch
 
 > **Tagline:** Don't just trust an answer. Challenge it.  
-> **Repository:** https://github.com/realitycheck-ai/realitycheck-ai  
+> **Repository:** https://github.com/gunmasterg9/RealityCheck-AI  
 > **Target Prize Categories:**
 > 1. **DigitalOcean: Best Open-Source AI Project**
 > 2. **Google: Best Use of Gemma 4**
@@ -13,7 +14,7 @@
 ### Why RealityCheck AI Qualifies:
 1. **100% Original, Independent Open-Source Architecture:**
    - Fully open-sourced under the permissive MIT license.
-   - Built from scratch without proprietary lock-in. The platform operates 100% locally with zero cloud API keys, protecting user privacy and ensuring reproducibility.
+   - Built from scratch without proprietary lock-in. The platform operates 100% locally with zero cloud API keys required, protecting user privacy and ensuring reproducibility.
 2. **First-Class Open-Weights Foundation:**
    - Uses **Google Gemma 4 E4B** (`gemma4:e4b`) as its core analytical reasoning engine via local Ollama inference.
    - Zero vendor lock-in: Anyone can run this platform on consumer hardware (such as an NVIDIA RTX 5060 Ti or Apple Silicon).
@@ -22,9 +23,9 @@
    - **`docker-compose.yml`:** One-command orchestration bundling the RealityCheck AI application with a local Ollama model container.
    - **`.do/app.yaml`:** Native DigitalOcean App Platform specification ready for 1-click cloud deployment.
 4. **Engineering Standards & Reliability:**
-   - 17 automated tests with 100% pass rate in <2 seconds.
+   - 25 automated tests with 100% pass rate in <10 seconds.
    - Pure SQLite WAL persistence with cascade foreign-key indexing.
-   - Comprehensive error recovery and non-blocking fallback parsers for untrusted model inputs.
+   - Strict SSRF (Server-Side Request Forgery) protection with DNS rebinding mitigations and private IP filtering.
 
 ---
 
@@ -32,31 +33,34 @@
 
 ### How Gemma 4 Serves as the Central Intelligence:
 
-Gemma 4 is not a generic chatbot wrapper in RealityCheck AI—it is the central multi-stage epistemic engine powering three distinct reasoning personas and multimodal analysis:
+Gemma 4 is not a generic chatbot wrapper in RealityCheck AI—it is the central multi-stage epistemic engine powering six distinct reasoning stages and multimodal analysis:
 
 1. **Multimodal Evidence Extraction (Vision + Text):**
    - RealityCheck AI exploits Gemma 4's native multimodal capabilities.
-   - Users submit claims alongside chart screenshots, nutritional labels, and financial graphics.
+   - Users submit claims alongside chart screenshots, nutritional labels, financial graphics, and social media captures.
    - Gemma 4 inspects **chart axes**, **fine-print asterisks**, **footnote caveats**, and **disclaimers** to expose discrepancies between marketing claims and empirical graphics.
-2. **Three-Pass Adversarial Self-Audit (Eliminating Sycophancy):**
-   - **Pass 1 (Evidence Assessor):** Scrutinizes assertions strictly against supplied evidence. If no empirical context is provided, it assigns `insufficient_evidence` instead of hallucinating plausible consensus.
-   - **Pass 2 (Adversarial Critic):** Instructed to actively challenge the initial assessment, surface selection bias, and identify missing variables or synthetic benchmark tricks.
-   - **Pass 3 (Chief RealityCheck Judge):** Reconciles disagreements without inventing evidence, quantifies assessment soundness (0–100%), and outputs a side-by-side "What Changed" diff.
+2. **Real-Time Automated 6-Stage Evidence Pipeline:**
+   - **Stage 1 (Classification & Extraction):** Automatically categorizes input (URLs, public social posts, WhatsApp/Telegram forwards, images, or direct claims) and extracts discrete testable claims. Includes native support for **regional Indian scripts: Hindi (Devanagari) & Gujarati**.
+   - **Stage 2 (Safe Source Retrieval):** SSRF-safe crawling of target URLs combined with parallel lookups in the **Google Fact Check Tools ClaimReview API** and real-time web search.
+   - **Stage 3 (Evidence Alignment):** Groups findings into Supporting, Contradicting, and Contextual corpora with exact excerpts and source reliability metrics.
+   - **Stage 4 (Gemma 4 Evidence Reasoner):** Synthesizes evidence through Gemma 4 with prompt injection fencing to prevent external website prompt manipulation.
+   - **Stage 5 (Adversarial Critic):** Challenges the initial stance by scrutinizing publication dates (detecting old recycled hoaxes), out-of-context quotes, and cherry-picked facts.
+   - **Stage 6 (Chief RealityCheck Judge):** Reconciles disagreements, renders an explainable verdict (`TRUE / SUPPORTED`, `FALSE / CONTRADICTED`, `MISLEADING`, `PARTLY TRUE`, `OUTDATED`, `UNVERIFIED`, `INSUFFICIENT EVIDENCE`), provides a transparent "What Changed" diff, and generates clickable source citations.
 3. **Dual Model Routing & Comparison:**
    - Supports local Gemma 4 E4B via Ollama and hosted Gemma 4 via Google's official `google-genai` SDK.
    - Interactive provider toggle allows instant comparison of local vs hosted inference.
 4. **Empirical Gemma 4 Benchmark Suite:**
-   - Built-in benchmark evaluating Gemma 4 on response time, 100% JSON schema compliance, and adversarial shift rate across multimodal sample cases.
+   - Built-in benchmark evaluating Gemma 4 on response time, 100% JSON schema compliance, and adversarial shift rate across 5 diverse multimodal and multilingual sample cases.
 
 ---
 
-## 🚀 Three Reproducible Demonstration Cases
+## 🚀 Reproducible Demonstration Cases
 
 1. **The Quantum Supremacy Speedup (Multimodal Chart Analysis):**
    - *Claim:* Quantum processor achieved 100,000x supremacy over supercomputers on general optimization problems.
    - *Visual Evidence:* Attached benchmark chart showing 3.2s vs 345,600s.
    - *Gemma 4 Catch:* Gemma 4 reads the fine-print footnote (`*Benchmark executed solely on pseudo-random synthetic circuit sampling; does not represent general optimization`) and shifts the initial verdict from `supported` to `mixed`.
-2. **Miracle Detox Panacea (Zero Context & Deceptive Supplement Label):**
+2. **Miracle Detox Panacea (Supplement Label & Health Myth):**
    - *Claim:* Morning lemon water with Himalayan salt cures metabolic resistance in 7 days.
    - *Visual Evidence:* Attached supplement label.
    - *Gemma 4 Catch:* Detects 1,420mg sodium (62% DV) and the mandatory FDA disclaimer, shifting verdict to `contradicted`.
@@ -64,6 +68,14 @@ Gemma 4 is not a generic chatbot wrapper in RealityCheck AI—it is the central 
    - *Claim:* Denmark generated over 50% of gross electricity from wind and solar.
    - *Visual Evidence:* Official Eurostat generation chart.
    - *Gemma 4 Catch:* Corroborates 48.2% wind + 7.8% solar = 56.0%, and identifies cross-border interconnectors (Norway/Sweden/Germany) as crucial grid balancing assumptions.
+4. **Viral 7-Day Diabetes Cure (WhatsApp Forward in Hindi):**
+   - *Claim:* "पीने के पानी में नींबू और सेंधा नमक मिलाकर 7 दिनों में टाइप 2 डायबिटीज पूरी तरह ठीक हो जाती है।"
+   - *Evidence:* Cross-checked against endocrinology consensus and fact-checking records.
+   - *Gemma 4 Catch:* Classifies claim as `FALSE / CONTRADICTED`, flags lack of clinical trials, and provides medical disclaimer.
+5. **NASA JWST Exoplanet Discovery (Real-time Science Reporting):**
+   - *Claim:* NASA's James Webb Space Telescope detected atmospheric carbon dioxide and methane on habitable-zone exoplanet K2-18 b.
+   - *Evidence:* NIRSpec spectroscopic measurements from NASA press briefings.
+   - *Gemma 4 Catch:* Corroborates spectroscopic data and confirms as `TRUE / SUPPORTED`.
 
 ---
 
@@ -72,9 +84,13 @@ Gemma 4 is not a generic chatbot wrapper in RealityCheck AI—it is the central 
 - [x] Complete working web application (React 19 + FastAPI + SQLite).
 - [x] Public GitHub-ready repository with MIT License.
 - [x] Gemma 4 multimodal vision and text claim analysis.
-- [x] Three-stage adversarial reasoning pipeline with "What Changed" diff.
+- [x] Real-time 6-stage evidence retrieval & verification pipeline.
+- [x] SSRF and DNS rebinding security protections.
+- [x] Google Fact Check Tools ClaimReview integration.
+- [x] Regional Indian language detection (Hindi & Gujarati).
 - [x] DigitalOcean deployment configuration (`Dockerfile`, `docker-compose.yml`, `.do/app.yaml`).
-- [x] Automated test suite (17 tests, 100% pass rate).
+- [x] Automated test suite (25 tests, 100% pass rate).
 - [x] Empirical Gemma 4 benchmark evaluation report.
-- [x] 3-minute video presentation demo script (`DEMO_SCRIPT.md`).
+- [x] Demo presentation script (`DEMO_SCRIPT.md`).
+
 
