@@ -1,13 +1,33 @@
-# RealityCheck AI 2.0 — Real-Time Fact Verification Platform
-
-> **"Don't just trust an answer. Challenge it."**
+# RealityCheck AI – Don't Just Trust an Answer. Challenge It.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Model: Google Gemma 4](https://img.shields.io/badge/Model-Google%20Gemma%204%20(Open--Weights)-blue.svg)](https://ai.google.dev/gemma)
 [![Deployment: DigitalOcean Ready](https://img.shields.io/badge/Deploy-DigitalOcean%20Ready-0080FF.svg)](https://www.digitalocean.com/)
-[![Tests: 25 Passed](https://img.shields.io/badge/Tests-25%20Passed%20(100%25)-success.svg)](backend/tests/)
+[![Tests: 50 Passed](https://img.shields.io/badge/Tests-50%20Passed%20(32%20Pytest%20%2B%2018%20Vitest)-success.svg)](backend/tests/)
 
-An evidence-aware, real-time fact-checking platform that accepts website URLs, public social media links, viral WhatsApp/Telegram forwards (with native Hindi & Gujarati detection), news headlines, and screenshots. It retrieves real-time internet evidence, verifies against Google Fact Check Tools, and uses Google Gemma 4 to reason over evidence through an adversarial 6-stage self-audit loop.
+RealityCheck AI is an open-source, AI-powered fact-checking platform that helps users investigate misinformation, misleading claims, suspicious messages, news articles, and potentially fraudulent content.
+
+Unlike conventional AI chatbots that simply generate answers, RealityCheck AI uses a six-stage adversarial verification pipeline to examine claims, retrieve independent evidence, challenge initial conclusions, and produce transparent, evidence-based verdicts.
+
+## Key Features
+
+- **Six-Stage Verification:** Evidence extraction, evidence evaluation, adversarial critique, objective adjudication, citation validation, and final verdict.
+- **Multi-Provider AI:** Google Gemini, Google Gemma 4, and Ollama with automatic provider fallback.
+- **Local AI Inference:** Supports lightweight Qwen models (`qwen3:1.7b`) through Ollama for resource-constrained computers (e.g. CPU-only Intel Core i3 / 8 GB RAM).
+- **Multimodal Analysis:** Gemma 4-powered visual evidence, chart, and screenshot analysis.
+- **Live Web Research:** Tavily search integration for retrieving relevant external sources.
+- **Fact-Check Integration:** Google Fact Check Tools API (`ClaimReview` registry).
+- **Evidence Transparency:** Supporting evidence, contradictory evidence, source references, and verification limitations.
+- **Self-Audit:** Challenges initial AI conclusions and records changes in the final assessment.
+- **Persistent History:** SQLite-powered verification history with WAL mode.
+- **9-Tier Source Classification:** Categorizes sources into `PRIMARY_OFFICIAL`, `FACT_CHECK`, `ACADEMIC`, `INDEPENDENT_NEWS`, `SECONDARY_REFERENCE`, `CONTEXTUAL`, `SOCIAL_MEDIA`, `UNRELIABLE`, and `UNAVAILABLE`.
+- **Epistemic Integrity:** Separates URL reachability from factual truth. Distinguishes unproven claims from disproven claims.
+
+## Verdict Categories
+
+`SUPPORTED`, `FALSE`, `MISLEADING`, `PARTLY_TRUE`, `OUTDATED`, `UNVERIFIED`, and `INSUFFICIENT_EVIDENCE`.
+
+The platform distinguishes between disproven claims and claims that simply lack sufficient independent evidence.
 
 ---
 
@@ -98,14 +118,15 @@ flowchart TD
 ## ⚡ Tech Stack & Environment
 
 - **Core Model:** Google Gemma 4 E4B (`gemma4:e4b`, 7.5B Q4) via local Ollama inference
+- **Low-Resource Local Model:** Qwen 3 1.7B (`qwen3:1.7b`) optimized for CPU-only 8GB RAM development laptops
 - **Cloud Alternative:** Hosted Gemma 4 / Gemini models via official `google-genai` Python SDK
 - **Fact-Checking APIs:** Google Fact Check Tools API (`claims:search`)
 - **Web Search Providers:** Tavily API, Brave Search API, and zero-config open encyclopedic fallback (Wikipedia & Open DuckDuckGo)
 - **Web Scraping & Security:** HTTPX async client, BeautifulSoup4, strict SSRF DNS-rebinding protection (`ipaddress` validation blocking `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.169.254`)
 - **Backend:** Python 3.12 + FastAPI + Pydantic v2 + SQLite (WAL mode)
-- **Frontend:** React 19 + Vite + Custom Dark Analytical Design System (`#0B0F19`) + Lucide Icons
+- **Frontend:** React 19 + Vite + Custom Dark Analytical Design System (`#0B0F19`) + Lucide Icons + React Error Boundary
 - **Deployment:** Docker, Docker Compose, DigitalOcean App Platform (`.do/app.yaml`)
-- **Testing:** Pytest & Pytest-Asyncio (25 automated tests, 100% passing)
+- **Testing:** 50 automated tests (32 Pytest backend tests + 18 Vitest frontend regression tests, 100% passing)
 
 ---
 
@@ -213,13 +234,20 @@ The platform includes an evaluation suite benchmarking Gemma 4 on an **NVIDIA RT
 
 ## 🧪 Automated Testing
 
-A 25-test suite verifies health, provider routing, SSRF blocking, Hindi/Gujarati script detection, HTML extraction, Google Fact Check Tools API, multimodal inputs, fallback parsers, and SQLite persistence:
+A 50-test automated verification suite covers both backend and frontend:
+- **Backend (32 tests):** Service health, provider routing & fallback, SSRF IP blocking, Hindi/Gujarati script detection, HTML extraction, Google Fact Check Tools API, multimodal inputs, 9-tier source classification, epistemic unverified breakdown, citation integrity, and SQLite persistence.
+- **Frontend (18 tests):** Vitest regression suite covering all Stage 6 completion scenarios, error boundaries, null/undefined safety, network drop resilience, and custom metric rendering.
 
 ```powershell
+# Run backend pytest suite (32 tests)
 python -m pytest backend/tests -v
+
+# Run frontend Vitest regression suite (18 tests)
+cd frontend
+npm.cmd test
 ```
 
-All AI calls in automated tests use isolated mocks and complete in <2 seconds without requiring GPU compute or API keys.
+All AI calls in automated tests use isolated mocks and complete in seconds without requiring GPU compute or API keys.
 
 ---
 
