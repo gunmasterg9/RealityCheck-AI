@@ -4,13 +4,26 @@ import { ArrowRight, GitCompare, RefreshCw, Zap } from 'lucide-react';
 export default function VerdictDiffView({ analysis }) {
   if (!analysis) return null;
 
-  const initialVerdict = analysis.initial_verdict || (analysis.initial_assessment && analysis.initial_assessment.initial_verdict) || 'unverified';
-  const finalVerdict = analysis.final_verdict || (analysis.final_judgment && analysis.final_judgment.verdict) || 'INSUFFICIENT EVIDENCE';
-  const whatChanged = analysis.what_changed || (analysis.final_judgment && analysis.final_judgment.what_changed) || '';
-  const initialReasoning = (analysis.initial_assessment && analysis.initial_assessment.initial_reasoning) || 'Initial evidence reasoning across retrieved web sources and ClaimReviews.';
-  const finalSummary = analysis.verdict_summary || (analysis.final_judgment && analysis.final_judgment.summary) || '';
-  const initialConfidence = Math.round(((analysis.initial_assessment && analysis.initial_assessment.confidence) || 0.8) * 100);
-  const finalConfidence = Math.round((analysis.assessment_confidence ?? (analysis.final_judgment && analysis.final_judgment.assessment_confidence) ?? 0.85) * 100);
+  const rawInitV = analysis.initial_verdict || analysis.initial_assessment?.initial_verdict || 'unverified';
+  const initialVerdict = typeof rawInitV === 'object' ? JSON.stringify(rawInitV) : String(rawInitV);
+
+  const rawFinalV = analysis.final_verdict || analysis.verdict || analysis.final_judgment?.verdict || 'INSUFFICIENT EVIDENCE';
+  const finalVerdict = typeof rawFinalV === 'object' ? JSON.stringify(rawFinalV) : String(rawFinalV);
+
+  const rawWhatChanged = analysis.what_changed || analysis.final_judgment?.what_changed || 'Evidence cross-examination refined initial stance.';
+  const whatChanged = typeof rawWhatChanged === 'object' ? JSON.stringify(rawWhatChanged) : String(rawWhatChanged);
+
+  const rawInitR = analysis.initial_assessment?.initial_reasoning || 'Initial evidence reasoning across retrieved web sources and ClaimReviews.';
+  const initialReasoning = typeof rawInitR === 'object' ? JSON.stringify(rawInitR) : String(rawInitR);
+
+  const rawSummary = analysis.verdict_summary || analysis.summary || analysis.final_judgment?.summary || '';
+  const finalSummary = typeof rawSummary === 'object' ? JSON.stringify(rawSummary) : String(rawSummary);
+
+  const initConfVal = Number(analysis.initial_assessment?.confidence) || 0.8;
+  const initialConfidence = Math.min(100, Math.max(0, Math.round(initConfVal * 100)));
+
+  const finalConfVal = Number(analysis.assessment_confidence ?? analysis.confidence ?? analysis.final_judgment?.assessment_confidence) || 0.85;
+  const finalConfidence = Math.min(100, Math.max(0, Math.round(finalConfVal * 100)));
 
   const getVerdictBadge = (verdict) => {
     const norm = String(verdict || '').toLowerCase();

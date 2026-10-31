@@ -4,10 +4,26 @@ import { AlertCircle, Clock, ShieldCheck } from 'lucide-react';
 export default function LimitationsSection({ analysis }) {
   if (!analysis) return null;
 
-  const { final_judgment, audit_steps, provider_used, model_used } = analysis;
-  const limitations = final_judgment.limitations || [];
+  const rawLimitations =
+    analysis.limitations ||
+    analysis.limitations_disclaimer ||
+    analysis.final_judgment?.limitations ||
+    [];
+  const limitations = Array.isArray(rawLimitations)
+    ? rawLimitations
+    : typeof rawLimitations === 'string'
+    ? [rawLimitations]
+    : [];
 
-  const totalDuration = audit_steps.reduce((acc, step) => acc + (step.duration_ms || 0), 0);
+  const rawSteps = analysis.stages || analysis.audit_steps || [];
+  const steps = Array.isArray(rawSteps) ? rawSteps : [];
+  const totalDuration = steps.reduce(
+    (acc, step) => acc + (Number(step?.duration_ms) || 0),
+    0
+  );
+
+  const providerUsed = analysis.provider_used || 'AI Provider';
+  const modelUsed = analysis.model_used || 'Evidence Reasoner';
 
   return (
     <div className="panel limitations-panel">
@@ -19,15 +35,22 @@ export default function LimitationsSection({ analysis }) {
             <h4 className="block-title">Explicit Epistemic Limitations & Disclosures</h4>
           </div>
           <p className="limit-intro">
-            RealityCheck AI maintains strict scientific boundaries. It does not hallucinate external factual verification.
+            RealityCheck AI maintains strict scientific boundaries. It challenges its own conclusions and does not invent external factual verification.
           </p>
           <ul className="limitations-list">
-            {limitations.map((lim, idx) => (
-              <li key={idx} className="limitation-item">
+            {limitations.length === 0 ? (
+              <li className="limitation-item">
                 <span className="dot" />
-                <span>{lim}</span>
+                <span>Inference is strictly bounded by retrieved real-time web documents and Google Fact Check records.</span>
               </li>
-            ))}
+            ) : (
+              limitations.map((lim, idx) => (
+                <li key={idx} className="limitation-item">
+                  <span className="dot" />
+                  <span>{typeof lim === 'object' ? JSON.stringify(lim) : String(lim)}</span>
+                </li>
+              ))
+            )}
           </ul>
         </div>
 
@@ -35,21 +58,28 @@ export default function LimitationsSection({ analysis }) {
         <div className="audit-latency-block">
           <div className="block-header">
             <Clock size={16} className="clock-icon" />
-            <h4 className="block-title">Pipeline Step Audit Latency ({totalDuration}ms total)</h4>
+            <h4 className="block-title">
+              Pipeline Audit Latency ({totalDuration > 0 ? `${totalDuration}ms total` : 'Complete'})
+            </h4>
           </div>
           <div className="audit-steps-list">
-            {audit_steps.map((step, idx) => (
-              <div key={idx} className="audit-step-row">
-                <div className="step-label">
-                  <span className="step-idx">{idx + 1}</span>
-                  <span className="step-name">{step.step_name.replace('_', ' ')}</span>
+            {steps.map((step, idx) => {
+              const rawName = step?.stage_name || step?.step_name || `Stage ${idx + 1}`;
+              const stepName = String(rawName).replace(/_/g, ' ');
+              const duration = Number(step?.duration_ms) || 0;
+              return (
+                <div key={idx} className="audit-step-row">
+                  <div className="step-label">
+                    <span className="step-idx">{idx + 1}</span>
+                    <span className="step-name">{stepName}</span>
+                  </div>
+                  <span className="step-duration mono">{duration} ms</span>
                 </div>
-                <span className="step-duration mono">{step.duration_ms} ms</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="audit-footer-note">
-            Inference executed via <strong>{provider_used}</strong> utilizing <strong>{model_used}</strong>.
+            Inference executed via <strong>{providerUsed}</strong> utilizing <strong>{modelUsed}</strong>.
           </div>
         </div>
       </div>
@@ -98,7 +128,9 @@ export default function LimitationsSection({ analysis }) {
           list-style: none;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
+          padding: 0;
+          margin: 0;
         }
         .limitation-item {
           display: flex;
@@ -113,7 +145,7 @@ export default function LimitationsSection({ analysis }) {
           height: 5px;
           border-radius: 50%;
           background: #A78BFA;
-          margin-top: 7px;
+          margin-top: 6px;
           flex-shrink: 0;
         }
         .audit-steps-list {
@@ -126,10 +158,9 @@ export default function LimitationsSection({ analysis }) {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-subtle);
-          padding: 6px 12px;
-          border-radius: 6px;
+          font-size: 0.82rem;
+          padding-bottom: 6px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
         .step-label {
           display: flex;
@@ -137,32 +168,33 @@ export default function LimitationsSection({ analysis }) {
           gap: 8px;
         }
         .step-idx {
-          font-size: 0.7rem;
-          font-weight: 700;
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-muted);
           width: 18px;
           height: 18px;
-          border-radius: 4px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.08);
+          font-size: 0.68rem;
           display: flex;
           align-items: center;
           justify-content: center;
+          color: var(--text-muted);
         }
         .step-name {
-          font-size: 0.8rem;
-          text-transform: capitalize;
           color: var(--text-main);
+          text-transform: capitalize;
         }
         .step-duration {
-          font-size: 0.75rem;
           color: #60A5FA;
+          font-size: 0.78rem;
         }
         .audit-footer-note {
-          font-size: 0.74rem;
+          font-size: 0.75rem;
           color: var(--text-muted);
+          margin-top: 10px;
+        }
+        .audit-footer-note strong {
+          color: var(--text-secondary);
         }
       `}</style>
     </div>
   );
 }
-

@@ -4,8 +4,12 @@ import { ShieldAlert, AlertTriangle, HelpCircle, Flame } from 'lucide-react';
 export default function AdversarialSection({ analysis }) {
   if (!analysis) return null;
 
-  const { adversarial_critique } = analysis;
-  const { challenges, hidden_assumptions, missing_evidence_required, critique_summary, suggested_revision } = adversarial_critique;
+  const critique = analysis.adversarial_critique || {};
+  const challenges = Array.isArray(critique.challenges) ? critique.challenges : [];
+  const hidden_assumptions = Array.isArray(critique.hidden_assumptions) ? critique.hidden_assumptions : [];
+  const missing_evidence_required = Array.isArray(critique.missing_evidence_required) ? critique.missing_evidence_required : [];
+  const critique_summary = critique.critique_summary || 'Adversarial self-critique investigated alternative explanations and potential biases.';
+  const suggested_revision = critique.suggested_revision || '';
 
   return (
     <div className="panel adversarial-panel">

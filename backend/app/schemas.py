@@ -265,6 +265,8 @@ class VerificationJobResponse(BaseModel):
     provider_used: str
     model_used: str
     stages: List[VerificationStageAudit] = Field(default_factory=list)
+    audit_steps: Optional[List[Dict[str, Any]]] = None
+    final_judgment: Optional[Dict[str, Any]] = None
     is_partial: bool = False
     error_notice: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -289,4 +291,27 @@ class VerificationJobResponse(BaseModel):
             self.source_urls = [s.url for s in self.sources if s.url]
         if self.verification_timestamp is None:
             self.verification_timestamp = self.created_at
+        if self.final_judgment is None:
+            self.final_judgment = {
+                "verdict": self.final_verdict,
+                "assessment_confidence": self.assessment_confidence,
+                "summary": self.verdict_summary,
+                "what_changed": self.what_changed,
+                "support_evidence": list(self.supporting_points or self.supporting_evidence),
+                "counter_evidence": list(self.contradicting_points or self.contradicting_evidence),
+                "assumptions": [],
+                "unknowns": [],
+                "limitations": list(self.limitations or self.limitations_disclaimer),
+                "confidence_explanation": self.soundness_explanation
+            }
+        if self.audit_steps is None and self.stages:
+            self.audit_steps = [
+                {
+                    "step_name": s.stage_name,
+                    "duration_ms": s.duration_ms,
+                    "summary": s.summary,
+                    "details": s.details
+                }
+                for s in self.stages
+            ]
 

@@ -12,6 +12,7 @@ import BenchmarkModal from './components/BenchmarkModal';
 import VerificationStagesStepper from './components/VerificationStagesStepper';
 import FactCheckMatchesBanner from './components/FactCheckMatchesBanner';
 import EvidenceGrid from './components/EvidenceGrid';
+import ErrorBoundary from './components/ErrorBoundary';
 import {
   fetchProviders,
   fetchSampleClaims,
@@ -42,7 +43,7 @@ export default function App() {
   const [isBenchmarkOpen, setIsBenchmarkOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Load initial environment metadata
+  // Load initial environment metadata and restore active session if present
   useEffect(() => {
     async function loadInitialData() {
       try {
@@ -57,6 +58,22 @@ export default function App() {
         if (samplesData.status === 'fulfilled') setSampleClaims(samplesData.value);
         if (histData.status === 'fulfilled') setHistory(histData.value);
         if (benchData.status === 'fulfilled') setBenchmarkData(benchData.value);
+
+        // Session survival: restore latest verification across browser refresh
+        const activeId = sessionStorage.getItem('realitycheck_active_id');
+        if (activeId) {
+          try {
+            const savedDetail = await fetchAnalysisDetail(activeId);
+            if (savedDetail && (savedDetail.id || savedDetail.final_verdict)) {
+              console.log('[RealityCheck] Restored completed verification from session across refresh:', activeId);
+              setCurrentAnalysis(savedDetail);
+              setClaim(savedDetail.primary_claim || savedDetail.claim || '');
+            }
+          } catch (e) {
+            console.warn('[RealityCheck] Stale session ID removed:', activeId);
+            sessionStorage.removeItem('realitycheck_active_id');
+          }
+        }
       } catch (err) {
         console.error('Failed to load initial data:', err);
       }
@@ -71,12 +88,42 @@ export default function App() {
     setErrorMessage(null);
     setCurrentAnalysis(null);
 
+    console.log('[RealityCheck] Verification request started:', {
+      timestamp: new Date().toISOString(),
+      inputType,
+      providerPreference,
+      hasImage: Boolean(imageData),
+      claimSnippet: claim.trim().slice(0, 80)
+    });
+
     try {
       // Use 2.0 real-time 6-stage verification pipeline
       const result = await verifyClaim(claim, inputType, providerPreference, imageData);
+
+      // Validate response structure to prevent blank-screen rendering
+      if (!result || typeof result !== 'object') {
+        throw new Error('Server returned an empty or malformed verification response.');
+      }
+
+      console.log('[RealityCheck] API response received successfully:', {
+        id: result.id,
+        verdict: result.final_verdict || result.verdict,
+        confidence: result.assessment_confidence ?? result.confidence,
+        stagesCount: result.stages?.length || 0,
+        sourcesCount: result.sources?.length || 0
+      });
+
+      console.log('[RealityCheck] Response validation completed.');
       setCurrentAnalysis(result);
+      console.log('[RealityCheck] Result state updated and components mounted.');
+
+      if (result.id) {
+        sessionStorage.setItem('realitycheck_active_id', result.id);
+      }
+
       fetchHistory().then(setHistory).catch(console.error);
     } catch (err) {
+      console.error('[RealityCheck] Verification pipeline error:', err);
       setErrorMessage(err.message || 'Verification pipeline execution failed.');
     } finally {
       setIsLoading(false);
@@ -87,12 +134,17 @@ export default function App() {
     abortActiveVerification();
     setIsLoading(false);
     setErrorMessage('Verification request was cancelled.');
+    console.log('[RealityCheck] Verification cancelled by user.');
   };
 
   const handleSelectHistoryItem = async (id) => {
     try {
+      console.log('[RealityCheck] Loading historical analysis:', id);
       const detail = await fetchAnalysisDetail(id);
       setCurrentAnalysis(detail);
+      if (detail?.id) {
+        sessionStorage.setItem('realitycheck_active_id', detail.id);
+      }
       setClaim(detail.primary_claim || detail.claim || '');
       setContext(detail.context || '');
       setImageData(null);
@@ -109,6 +161,7 @@ export default function App() {
       setHistory((prev) => prev.filter((item) => item.id !== id));
       if (currentAnalysis?.id === id) {
         setCurrentAnalysis(null);
+        sessionStorage.removeItem('realitycheck_active_id');
       }
     } catch (err) {
       setErrorMessage(`Failed to delete record: ${err.message}`);
@@ -156,38 +209,46 @@ export default function App() {
         {/* Pipeline Progress Indicator */}
         {isLoading && <AnalysisProgress onCancel={handleCancelVerification} />}
 
-        {/* Results Panels */}
+        {/* Results Panels with Error Boundary */}
         {currentAnalysis && !isLoading && (
-          <div className="analysis-results-container">
-            <VerdictPanel analysis={currentAnalysis} />
+          <ErrorBoundary
+            title="Verification Result View Guard"
+            onReset={() => {
+              setCurrentAnalysis(null);
+              sessionStorage.removeItem('realitycheck_active_id');
+            }}
+          >
+            <div className="analysis-results-container">
+              <VerdictPanel analysis={currentAnalysis} />
 
-            {/* Official Fact Check Tools Matches Banner */}
-            {currentAnalysis.fact_check_matches && currentAnalysis.fact_check_matches.length > 0 && (
-              <FactCheckMatchesBanner factChecks={currentAnalysis.fact_check_matches} />
-            )}
+              {/* Official Fact Check Tools Matches Banner */}
+              {currentAnalysis.fact_check_matches && currentAnalysis.fact_check_matches.length > 0 && (
+                <FactCheckMatchesBanner factChecks={currentAnalysis.fact_check_matches} />
+              )}
 
-            {/* 6-Stage Real-Time Pipeline Audit Stepper */}
-            {currentAnalysis.stages && currentAnalysis.stages.length > 0 && (
-              <VerificationStagesStepper stages={currentAnalysis.stages} />
-            )}
+              {/* 6-Stage Real-Time Pipeline Audit Stepper */}
+              {currentAnalysis.stages && currentAnalysis.stages.length > 0 && (
+                <VerificationStagesStepper stages={currentAnalysis.stages} />
+              )}
 
-            {/* Evidence Corpus Grid with Citations */}
-            {((currentAnalysis.sources && currentAnalysis.sources.length > 0) || (currentAnalysis.evidence && currentAnalysis.evidence.length > 0)) && (
-              <EvidenceGrid sources={currentAnalysis.sources} evidence={currentAnalysis.evidence} />
-            )}
+              {/* Evidence Corpus Grid with Citations */}
+              {((currentAnalysis.sources && currentAnalysis.sources.length > 0) || (currentAnalysis.evidence && currentAnalysis.evidence.length > 0)) && (
+                <EvidenceGrid sources={currentAnalysis.sources} evidence={currentAnalysis.evidence} />
+              )}
 
-            {/* Verdict Diff / What Changed */}
-            <VerdictDiffView analysis={currentAnalysis} />
+              {/* Verdict Diff / What Changed */}
+              <VerdictDiffView analysis={currentAnalysis} />
 
-            {/* Supplementary Sections */}
-            {currentAnalysis.initial_assessment && (
-              <EvidenceSection analysis={currentAnalysis} />
-            )}
-            {currentAnalysis.adversarial_critique && (
-              <AdversarialSection analysis={currentAnalysis} />
-            )}
-            <LimitationsSection analysis={currentAnalysis} />
-          </div>
+              {/* Supplementary Sections */}
+              {currentAnalysis.initial_assessment && (
+                <EvidenceSection analysis={currentAnalysis} />
+              )}
+              {currentAnalysis.adversarial_critique && (
+                <AdversarialSection analysis={currentAnalysis} />
+              )}
+              <LimitationsSection analysis={currentAnalysis} />
+            </div>
+          </ErrorBoundary>
         )}
 
         {/* Welcome & Philosophy Explainer (when no active analysis) */}

@@ -13,15 +13,41 @@ import {
 export default function EvidenceSection({ analysis }) {
   if (!analysis) return null;
 
-  const { final_judgment, initial_assessment, has_image } = analysis;
+  const fj = analysis.final_judgment || {};
+  const ia = analysis.initial_assessment || {};
+  const has_image = Boolean(analysis.has_image || analysis.input_type === 'image');
   const [activeTab, setActiveTab] = useState('all');
 
-  const supportItems = final_judgment.support_evidence || [];
-  const counterItems = final_judgment.counter_evidence || [];
-  const assumptionItems = final_judgment.assumptions || [];
-  const unknownItems = final_judgment.unknowns || [];
-  const visualObservations = initial_assessment.visual_observations || [];
-  const visualVerifications = final_judgment.visual_verifications || [];
+  const supportItems = Array.isArray(analysis.supporting_evidence)
+    ? analysis.supporting_evidence
+    : Array.isArray(analysis.supporting_points)
+    ? analysis.supporting_points
+    : Array.isArray(fj.support_evidence)
+    ? fj.support_evidence
+    : [];
+
+  const counterItems = Array.isArray(analysis.contradicting_evidence)
+    ? analysis.contradicting_evidence
+    : Array.isArray(analysis.contradicting_points)
+    ? analysis.contradicting_points
+    : Array.isArray(fj.counter_evidence)
+    ? fj.counter_evidence
+    : [];
+
+  const assumptionItems = Array.isArray(analysis.assumptions)
+    ? analysis.assumptions
+    : Array.isArray(fj.assumptions)
+    ? fj.assumptions
+    : [];
+
+  const unknownItems = Array.isArray(analysis.unknowns)
+    ? analysis.unknowns
+    : Array.isArray(fj.unknowns)
+    ? fj.unknowns
+    : [];
+
+  const visualObservations = Array.isArray(ia.visual_observations) ? ia.visual_observations : [];
+  const visualVerifications = Array.isArray(fj.visual_verifications) ? fj.visual_verifications : [];
 
   const tabs = [
     { id: 'all', label: 'All Items', count: supportItems.length + counterItems.length + assumptionItems.length + unknownItems.length },

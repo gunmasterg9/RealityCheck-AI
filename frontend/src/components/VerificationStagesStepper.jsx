@@ -6,40 +6,21 @@ export default function VerificationStagesStepper({ stages }) {
 
   if (!stages || stages.length === 0) return null;
 
-  const getStageIcon = (stageName) => {
-    switch (stageName) {
-      case 'input_classification':
-        return FileSearch;
-      case 'source_retrieval':
-        return Search;
-      case 'evidence_collection':
-        return Layers;
-      case 'gemma_analyzer':
-        return Cpu;
-      case 'adversarial_critic':
-        return ShieldAlert;
-      case 'chief_judge':
-      default:
-        return Scale;
-    }
+  const getStageIcon = (stage) => {
+    const num = stage?.stage_number;
+    const name = String(stage?.stage_name || '').toLowerCase();
+    if (num === 1 || name.includes('extract') || name.includes('input')) return FileSearch;
+    if (num === 2 || name.includes('eval') || name.includes('source') || name.includes('retriev')) return Search;
+    if (num === 3 || name.includes('critique') || name.includes('adversar') || name.includes('collect')) return ShieldAlert;
+    if (num === 4 || name.includes('adjudic') || name.includes('analyzer') || name.includes('reason')) return Scale;
+    if (num === 5 || name.includes('citat') || name.includes('valid')) return Layers;
+    return CheckCircle2;
   };
 
-  const getStageLabel = (stageName) => {
-    switch (stageName) {
-      case 'input_classification':
-        return '1. Input Classification & Extraction';
-      case 'source_retrieval':
-        return '2. Real-Time Source Retrieval';
-      case 'evidence_collection':
-        return '3. Evidence Synthesis & Alignment';
-      case 'gemma_analyzer':
-        return '4. Gemma 4 Evidence Reasoner';
-      case 'adversarial_critic':
-        return '5. Adversarial Self-Critique';
-      case 'chief_judge':
-      default:
-        return '6. Chief Judge & Reconciled Verdict';
-    }
+  const getStageLabel = (stage) => {
+    const num = stage?.stage_number;
+    const raw = String(stage?.stage_name || (num ? `Stage ${num}` : 'Verification Stage'));
+    return num ? `Stage ${num}: ${raw.replace(/_/g, ' ')}` : raw.replace(/_/g, ' ');
   };
 
   const toggleExpand = (idx) => {
@@ -60,7 +41,7 @@ export default function VerificationStagesStepper({ stages }) {
 
       <div className="stages-timeline" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {stages.map((stage, idx) => {
-          const Icon = getStageIcon(stage.stage_name);
+          const Icon = getStageIcon(stage);
           const isExpanded = expandedStage === idx;
 
           return (
@@ -103,7 +84,7 @@ export default function VerificationStagesStepper({ stages }) {
                   </div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#F1F5F9' }}>
-                      {getStageLabel(stage.stage_name)}
+                      {getStageLabel(stage)}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>{stage.summary}</div>
                   </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import { ShieldCheck, ExternalLink, AlertOctagon, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 
 export default function FactCheckMatchesBanner({ factChecks }) {
-  if (!factChecks || factChecks.length === 0) return null;
+  if (!Array.isArray(factChecks) || factChecks.length === 0) return null;
 
   const getRatingBadgeStyle = (rating) => {
     const r = (rating || '').toLowerCase();
@@ -84,7 +84,7 @@ export default function FactCheckMatchesBanner({ factChecks }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#93C5FD' }}>
-                    {item.publisher}
+                    {item?.publisher || 'Fact Checker'}
                   </span>
                   <span
                     style={{
@@ -100,12 +100,12 @@ export default function FactCheckMatchesBanner({ factChecks }) {
                       gap: 4
                     }}
                   >
-                    <BadgeIcon size={12} /> {item.rating}
+                    <BadgeIcon size={12} /> {typeof item?.rating === 'object' ? JSON.stringify(item.rating) : String(item?.rating || 'Unrated')}
                   </span>
                 </div>
 
                 <div style={{ fontSize: '0.85rem', color: '#E2E8F0', lineHeight: 1.4, marginBottom: '0.5rem' }}>
-                  "{item.claim_text}"
+                  "{typeof item?.claim_text === 'object' ? JSON.stringify(item.claim_text) : String(item?.claim_text || '')}"
                 </div>
 
                 {item.review_title && (

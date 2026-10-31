@@ -4,16 +4,19 @@ import { ExternalLink, CheckCircle2, XCircle, HelpCircle, Globe, Shield, BookOpe
 export default function EvidenceGrid({ sources, evidence }) {
   const [activeTab, setActiveTab] = useState('all');
 
-  if ((!sources || sources.length === 0) && (!evidence || evidence.length === 0)) return null;
+  const safeSources = Array.isArray(sources) ? sources : [];
+  const safeEvidence = Array.isArray(evidence) ? evidence : [];
 
-  const filteredEvidence = (evidence || []).filter((item) => {
+  if (safeSources.length === 0 && safeEvidence.length === 0) return null;
+
+  const filteredEvidence = safeEvidence.filter((item) => {
     if (activeTab === 'all') return true;
-    return item.direction === activeTab;
+    return item?.direction === activeTab;
   });
 
-  const supportingCount = (evidence || []).filter((e) => e.direction === 'supporting').length;
-  const contradictingCount = (evidence || []).filter((e) => e.direction === 'contradicting').length;
-  const contextualCount = (evidence || []).filter((e) => e.direction === 'contextual').length;
+  const supportingCount = safeEvidence.filter((e) => e?.direction === 'supporting').length;
+  const contradictingCount = safeEvidence.filter((e) => e?.direction === 'contradicting').length;
+  const contextualCount = safeEvidence.filter((e) => e?.direction === 'contextual').length;
 
   const getDirectionBadge = (dir) => {
     switch (dir) {
@@ -135,7 +138,7 @@ export default function EvidenceGrid({ sources, evidence }) {
                 </div>
 
                 <div style={{ fontSize: '0.85rem', color: '#E2E8F0', lineHeight: 1.45, fontStyle: 'italic' }}>
-                  "{item.excerpt}"
+                  "{typeof item?.excerpt === 'object' ? JSON.stringify(item.excerpt) : String(item?.excerpt || '')}"
                 </div>
               </div>
 
