@@ -18,6 +18,7 @@ import {
   fetchBenchmarkReport,
   analyzeClaim,
   verifyClaim,
+  abortActiveVerification,
   fetchHistory,
   fetchAnalysisDetail,
   deleteAnalysis
@@ -80,6 +81,12 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancelVerification = () => {
+    abortActiveVerification();
+    setIsLoading(false);
+    setErrorMessage('Verification request was cancelled.');
   };
 
   const handleSelectHistoryItem = async (id) => {
@@ -147,7 +154,7 @@ export default function App() {
         />
 
         {/* Pipeline Progress Indicator */}
-        {isLoading && <AnalysisProgress />}
+        {isLoading && <AnalysisProgress onCancel={handleCancelVerification} />}
 
         {/* Results Panels */}
         {currentAnalysis && !isLoading && (

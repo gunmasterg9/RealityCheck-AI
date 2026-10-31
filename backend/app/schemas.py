@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timezone
 
 VerdictType = Literal["supported", "contradicted", "mixed", "insufficient_evidence"]
-ProviderType = Literal["auto", "local", "cloud"]
+ProviderType = Literal["auto", "local", "cloud", "offline"]
 EvidenceClassification = Literal["support", "counter", "assumption", "unknown"]
 ImpactType = Literal["increases_support", "increases_counter", "neutral", "induces_uncertainty"]
 
@@ -149,12 +149,16 @@ class BenchmarkReport(BaseModel):
 
 InputCategory = Literal["auto", "url", "social", "message", "article", "image", "direct"]
 VerificationVerdict = Literal[
-    "TRUE / SUPPORTED",
-    "FALSE / CONTRADICTED",
+    "SUPPORTED",
+    "FALSE",
     "MISLEADING",
-    "PARTLY TRUE",
+    "PARTLY_TRUE",
     "OUTDATED",
     "UNVERIFIED",
+    "INSUFFICIENT_EVIDENCE",
+    "TRUE / SUPPORTED",
+    "FALSE / CONTRADICTED",
+    "PARTLY TRUE",
     "INSUFFICIENT EVIDENCE"
 ]
 EvidenceDirection = Literal["supporting", "contradicting", "contextual", "inconclusive"]
@@ -242,16 +246,47 @@ class VerificationJobResponse(BaseModel):
     sources: List[SourceItem] = Field(default_factory=list)
     evidence: List[EvidenceRecord] = Field(default_factory=list)
     final_verdict: VerificationVerdict
+    verdict: Optional[str] = None
     initial_verdict: str
-    assessment_confidence: float = Field(..., ge=0.0, le=1.0)
+    assessment_confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+    confidence: Optional[float] = None
     soundness_explanation: str
+    explanation: Optional[str] = None
     verdict_summary: str
+    summary: Optional[str] = None
     what_changed: str
     supporting_points: List[str] = Field(default_factory=list)
+    supporting_evidence: List[str] = Field(default_factory=list)
     contradicting_points: List[str] = Field(default_factory=list)
+    contradicting_evidence: List[str] = Field(default_factory=list)
+    source_urls: List[str] = Field(default_factory=list)
     limitations_disclaimer: List[str] = Field(default_factory=list)
+    limitations: List[str] = Field(default_factory=list)
     provider_used: str
     model_used: str
     stages: List[VerificationStageAudit] = Field(default_factory=list)
+    is_partial: bool = False
+    error_notice: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    verification_timestamp: Optional[str] = None
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.verdict is None:
+            self.verdict = self.final_verdict
+        if self.confidence is None:
+            self.confidence = self.assessment_confidence
+        if self.explanation is None:
+            self.explanation = self.soundness_explanation
+        if self.summary is None:
+            self.summary = self.verdict_summary
+        if not self.supporting_evidence and self.supporting_points:
+            self.supporting_evidence = list(self.supporting_points)
+        if not self.contradicting_evidence and self.contradicting_points:
+            self.contradicting_evidence = list(self.contradicting_points)
+        if not self.limitations and self.limitations_disclaimer:
+            self.limitations = list(self.limitations_disclaimer)
+        if not self.source_urls and self.sources:
+            self.source_urls = [s.url for s in self.sources if s.url]
+        if self.verification_timestamp is None:
+            self.verification_timestamp = self.created_at
 

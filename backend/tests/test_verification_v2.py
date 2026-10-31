@@ -113,16 +113,17 @@ async def test_full_6_stage_verification_pipeline():
     assert len(resp.stages) == 6
     stage_names = [s.stage_name for s in resp.stages]
     assert stage_names == [
-        "input_classification",
-        "source_retrieval",
-        "evidence_collection",
-        "gemma_analyzer",
-        "adversarial_critic",
-        "chief_judge"
+        "Evidence Extraction",
+        "Evidence Evaluation",
+        "Adversarial Critique",
+        "Objective Adjudication",
+        "Citation Validation",
+        "Final Verdict"
     ]
     assert resp.final_verdict in [
-        "TRUE / SUPPORTED", "FALSE / CONTRADICTED", "MISLEADING",
-        "PARTLY TRUE", "OUTDATED", "UNVERIFIED", "INSUFFICIENT EVIDENCE"
+        "SUPPORTED", "FALSE", "MISLEADING",
+        "PARTLY_TRUE", "OUTDATED", "UNVERIFIED", "INSUFFICIENT_EVIDENCE",
+        "TRUE / SUPPORTED", "FALSE / CONTRADICTED", "PARTLY TRUE", "INSUFFICIENT EVIDENCE"
     ]
     assert resp.assessment_confidence > 0.0
     assert len(resp.what_changed) > 5

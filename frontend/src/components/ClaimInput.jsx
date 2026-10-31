@@ -308,7 +308,7 @@ export default function ClaimInput({
           <div className="provider-selector-group">
             <label className="selector-label">Inference Target:</label>
             <div className="radio-options">
-              <label className={`radio-pill ${providerPreference === 'auto' ? 'selected' : ''}`}>
+              <label className={`radio-pill ${providerPreference === 'auto' ? 'selected' : ''}`} title="Fast Cloud Gemini first with automatic local fallback">
                 <input
                   type="radio"
                   name="provider"
@@ -317,20 +317,9 @@ export default function ClaimInput({
                   onChange={() => setProviderPreference('auto')}
                   disabled={isLoading}
                 />
-                Auto (Local Gemma 4 1st)
+                ⚡ Auto (Cloud 1st → Local Fallback)
               </label>
-              <label className={`radio-pill ${providerPreference === 'local' ? 'selected' : ''}`}>
-                <input
-                  type="radio"
-                  name="provider"
-                  value="local"
-                  checked={providerPreference === 'local'}
-                  onChange={() => setProviderPreference('local')}
-                  disabled={isLoading}
-                />
-                Local Gemma 4 (Ollama)
-              </label>
-              <label className={`radio-pill ${providerPreference === 'cloud' ? 'selected' : ''}`}>
+              <label className={`radio-pill ${providerPreference === 'cloud' ? 'selected' : ''}`} title="Google Gemini Cloud API (Fastest response)">
                 <input
                   type="radio"
                   name="provider"
@@ -339,7 +328,29 @@ export default function ClaimInput({
                   onChange={() => setProviderPreference('cloud')}
                   disabled={isLoading}
                 />
-                Hosted Gemma 4 (Gemini API)
+                ☁️ Cloud Gemini (Fastest)
+              </label>
+              <label className={`radio-pill ${providerPreference === 'local' ? 'selected' : ''}`} title="Ollama Qwen 3 1.7B - CPU optimized (~10s, low RAM footprint)">
+                <input
+                  type="radio"
+                  name="provider"
+                  value="local"
+                  checked={providerPreference === 'local'}
+                  onChange={() => setProviderPreference('local')}
+                  disabled={isLoading}
+                />
+                💻 Local CPU (Qwen 3 1.7B)
+              </label>
+              <label className={`radio-pill ${providerPreference === 'offline' ? 'selected' : ''}`} title="Strict local-only mode, no external cloud calls">
+                <input
+                  type="radio"
+                  name="provider"
+                  value="offline"
+                  checked={providerPreference === 'offline'}
+                  onChange={() => setProviderPreference('offline')}
+                  disabled={isLoading}
+                />
+                🔒 Offline Local
               </label>
             </div>
           </div>

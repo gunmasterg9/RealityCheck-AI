@@ -12,10 +12,21 @@ from app.schemas import ProviderDetail
 logger = logging.getLogger(__name__)
 
 class OllamaProvider(BaseAIProvider):
-    def __init__(self, base_url: Optional[str] = None, model_id: Optional[str] = None, timeout_seconds: Optional[int] = None):
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        model_id: Optional[str] = None,
+        timeout_seconds: Optional[int] = None,
+        num_ctx: Optional[int] = None,
+        num_predict: Optional[int] = None,
+        num_threads: Optional[int] = None
+    ):
         self._base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self._model_id = model_id or settings.local_model_id
         self._timeout_seconds = timeout_seconds or settings.inference_timeout_seconds
+        self._num_ctx = num_ctx or settings.ollama_num_ctx
+        self._num_predict = num_predict or settings.ollama_num_predict
+        self._num_threads = num_threads or settings.ollama_num_threads
 
     @property
     def name(self) -> str:
@@ -89,6 +100,51 @@ class OllamaProvider(BaseAIProvider):
             return img_str.split(",", 1)[1].strip()
         return img_str.strip()
 
+    def _repair_and_parse_json(self, text: str) -> Optional[Dict[str, Any]]:
+        """Attempt to repair common LLM JSON output flaws such as unclosed braces or quotes."""
+        clean = text.strip()
+        if not clean.startswith("{"):
+            start_idx = clean.find("{")
+            if start_idx != -1:
+                clean = clean[start_idx:]
+            else:
+                return None
+
+        # Count unmatched quotes and brackets
+        quote_count = clean.count('"') - clean.count('\\"')
+        if quote_count % 2 != 0:
+            clean += '"'
+
+        open_brackets = clean.count('[') - clean.count(']')
+        open_braces = clean.count('{') - clean.count('}')
+
+        repaired = clean
+        if open_brackets > 0:
+            repaired += ']' * open_brackets
+        if open_braces > 0:
+            repaired += '}' * open_braces
+
+        try:
+            return json.loads(repaired)
+        except Exception:
+            pass
+
+        # If still failing, drop trailing truncated line and close
+        lines = clean.split('\n')
+        if len(lines) > 2:
+            truncated = '\n'.join(lines[:-1]).rstrip(', \r\t')
+            open_b = truncated.count('[') - truncated.count(']')
+            open_c = truncated.count('{') - truncated.count('}')
+            if open_b > 0:
+                truncated += ']' * open_b
+            if open_c > 0:
+                truncated += '}' * open_c
+            try:
+                return json.loads(truncated)
+            except Exception:
+                pass
+        return None
+
     def _extract_json(self, raw_text: str) -> Dict[str, Any]:
         """Robustly parse JSON even if enclosed in markdown code blocks or containing preamble."""
         clean = raw_text.strip()
@@ -104,7 +160,9 @@ class OllamaProvider(BaseAIProvider):
             try:
                 return json.loads(fence_match.group(1).strip())
             except json.JSONDecodeError:
-                pass
+                repaired = self._repair_and_parse_json(fence_match.group(1))
+                if repaired:
+                    return repaired
 
         # Try finding outer-most braces { ... }
         brace_match = re.search(r"(\{[\s\S]*\})", clean)
@@ -113,6 +171,11 @@ class OllamaProvider(BaseAIProvider):
                 return json.loads(brace_match.group(1).strip())
             except json.JSONDecodeError:
                 pass
+
+        # Last-resort repair
+        repaired = self._repair_and_parse_json(clean)
+        if repaired:
+            return repaired
 
         raise ValueError(f"Failed to parse valid JSON from model output: {raw_text[:200]}...")
 
@@ -147,8 +210,9 @@ class OllamaProvider(BaseAIProvider):
             "options": {
                 "temperature": 0.2,
                 "top_p": 0.9,
-                "num_ctx": 8192,
-                "num_predict": 1024,
+                "num_ctx": self._num_ctx,
+                "num_predict": self._num_predict,
+                "num_thread": self._num_threads,
             }
         }
 

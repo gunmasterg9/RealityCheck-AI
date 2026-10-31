@@ -158,3 +158,4 @@ def fence_untrusted_content(content: str, label: str = "EXTERNAL_DOCUMENT_SNIPPE
         f"{truncated}\n"
         f"</{label}>"
     )
+

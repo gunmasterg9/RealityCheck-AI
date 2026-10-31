@@ -318,3 +318,4 @@ class ScraperService:
         return await self.fetch_article(url)
 
 scraper_service = ScraperService()
+

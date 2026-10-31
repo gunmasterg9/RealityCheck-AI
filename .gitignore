@@ -11,6 +11,8 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
+backend/.venv/
 ENV/
 build/
 develop-eggs/
@@ -52,4 +54,5 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+scratch/
 

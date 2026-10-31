@@ -32,6 +32,7 @@ from app.schemas import (
     ClaimReviewItem
 )
 from app.analyzer import get_pipeline_service, generate_printable_html_report
+from app.providers.manager import get_provider_manager
 from app.services.analysis_pipeline import SAMPLE_CLAIMS
 from app.services.verification_pipeline import get_verification_service
 from app.services.search_service import search_service
@@ -83,8 +84,8 @@ async def health_check():
 @app.get("/api/providers", response_model=ProviderStatusResponse, summary="Inspect AI provider statuses")
 async def get_providers():
     """Inspect local and cloud AI provider availability and active configuration."""
-    service = get_pipeline_service()
-    return await service.get_providers_status()
+    manager = get_provider_manager()
+    return await manager.get_providers_status()
 
 @app.get("/api/sample-claims", response_model=List[SampleClaim], summary="List sample claims for demonstration")
 async def get_sample_claims():

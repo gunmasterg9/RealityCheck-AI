@@ -17,12 +17,22 @@ class Settings(BaseSettings):
     port: int = 8000
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     
-    # Local Inference (Ollama)
+    # Provider & Inference Architecture
+    default_provider_mode: str = Field(default="auto", alias="DEFAULT_PROVIDER_MODE")  # auto, cloud, local, offline
+    stage_timeout_seconds: int = Field(default=90, alias="STAGE_TIMEOUT_SECONDS")
+    total_verification_timeout_seconds: int = Field(default=300, alias="TOTAL_VERIFICATION_TIMEOUT_SECONDS")
+    max_llm_retries: int = Field(default=1, alias="MAX_LLM_RETRIES")
+    inference_timeout_seconds: int = Field(default=90, alias="INFERENCE_TIMEOUT_SECONDS")
+
+    # Local Inference (Ollama) - Optimized for Low-Resource Hardware (Core i3 / 8GB RAM)
     ollama_base_url: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_BASE_URL")
-    local_model_id: str = Field(default="gemma4:e4b", alias="LOCAL_MODEL_ID")
-    inference_timeout_seconds: int = Field(default=180, alias="INFERENCE_TIMEOUT_SECONDS")
+    local_model_id: str = Field(default="qwen3:1.7b", alias="LOCAL_MODEL_ID")
+    heavy_local_model_id: str = Field(default="gemma4:e4b", alias="HEAVY_LOCAL_MODEL_ID")
+    ollama_num_ctx: int = Field(default=2048, alias="OLLAMA_NUM_CTX")
+    ollama_num_predict: int = Field(default=1024, alias="OLLAMA_NUM_PREDICT")
+    ollama_num_threads: int = Field(default=4, alias="OLLAMA_NUM_THREADS")
     
-    # Cloud Inference (Optional Google Gemini)
+    # Cloud Inference (Google Gemini)
     gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
     cloud_model_id: str = Field(default="gemini-3.5-flash", alias="CLOUD_MODEL_ID")
     
