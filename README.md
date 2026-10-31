@@ -109,23 +109,37 @@ flowchart TD
 
 ---
 
-## 🚀 Quickstart Guide (Windows PowerShell)
+## 🚀 Quickstart Guide (Windows)
 
-### 1. Prerequisites Check
-Ensure Ollama is running with Gemma 4:
+### Option 1: One-Click Startup (Recommended)
+Double-click `run.bat` in the root folder, or run in PowerShell:
 ```powershell
-# Verify Ollama is running and has gemma4:e4b installed
+.\run.bat
+```
+This automatically verifies prerequisites, initializes the backend server on `http://127.0.0.1:8000`, and launches the Vite dashboard on `http://localhost:5173`.
+
+To stop all background processes cleanly:
+```powershell
+.\stop.bat
+```
+
+### Option 2: Manual Step-by-Step
+
+#### 1. Prerequisites Check
+Ensure Ollama is running with Gemma 4 or Qwen 3:
+```powershell
+# Verify Ollama is running and has local models installed
 Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags"
 ```
 
-### 2. Environment Setup
+#### 2. Environment Setup
 ```powershell
 Copy-Item .env.example .env
 Copy-Item .env.example backend\.env
 ```
 *(Optional: If you wish to test hosted Gemma 4 via Google Cloud, add your `GEMINI_API_KEY` into `backend\.env`)*
 
-### 3. Start the Backend API
+#### 3. Start the Backend API
 ```powershell
 $env:PYTHONPATH = "backend"
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -135,7 +149,7 @@ Interactive API docs:
 - Provider status: [http://127.0.0.1:8000/api/providers](http://127.0.0.1:8000/api/providers)
 - Gemma 4 Benchmark: [http://127.0.0.1:8000/api/benchmark](http://127.0.0.1:8000/api/benchmark)
 
-### 4. Start the Frontend Dashboard
+#### 4. Start the Frontend Dashboard
 In a separate terminal:
 ```powershell
 cd frontend
