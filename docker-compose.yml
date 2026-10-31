@@ -31,3 +31,4 @@ services:
 volumes:
   realitycheck-data:
   ollama-models:
+

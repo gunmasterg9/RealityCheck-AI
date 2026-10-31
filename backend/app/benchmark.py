@@ -53,3 +53,4 @@ REFERENCE_GEMMA4_BENCHMARK = {
 def get_benchmark_report() -> BenchmarkReport:
     """Returns the comprehensive benchmark evaluation report for Gemma 4."""
     return BenchmarkReport.model_validate(REFERENCE_GEMMA4_BENCHMARK)
+

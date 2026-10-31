@@ -88,3 +88,4 @@ img3.save('frontend/public/samples/sample_denmark_energy_chart.png')
 img3.save('backend/samples/sample_denmark_energy_chart.png')
 
 print('All 3 multimodal sample images successfully generated.')
+

@@ -34,3 +34,4 @@ Thank you for your interest in contributing to RealityCheck AI! We are building 
    - Maintain documentation integrity and preserve type annotations.
    - All AI provider interactions must treat model output as untrusted and validate via Pydantic schemas.
    - Tests must never require live API keys; mock provider calls cleanly in `backend/tests/`.
+

@@ -21,3 +21,4 @@ services:
       http_path: /api/health
       initial_delay_seconds: 10
       period_seconds: 15
+

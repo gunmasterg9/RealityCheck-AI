@@ -331,3 +331,4 @@ export default function BenchmarkModal({ isOpen, onClose, benchmarkData }) {
     </div>
   );
 }
+

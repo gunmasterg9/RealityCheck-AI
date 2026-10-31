@@ -61,3 +61,4 @@
 - **Voiceover:**
   > *"RealityCheck AI is turnkey-ready for DigitalOcean deployment with Docker, App Platform spec, and complete automated tests. It represents the best of open-source AI and the best of Gemma 4."*
   > *"Thank you, and remember: Don't just trust an answer. Challenge it."*
+
